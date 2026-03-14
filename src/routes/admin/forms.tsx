@@ -217,7 +217,7 @@ export default function FormsPage() {
                       <TableCell className="text-right">
                         {form.submissionCount > 0 ? (
                           <Link
-                            to={`/admin/submissions/${form.id}`}
+                            to={`/admin/forms/${form.id}/submissions`}
                             className="font-medium text-gcu-red underline-offset-4 hover:underline"
                           >
                             {form.submissionCount}

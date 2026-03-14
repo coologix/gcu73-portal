@@ -200,6 +200,7 @@ export function InvitationManager({
   const resendInvite = async (id: string) => {
     try {
       const inv = invitations.find(i => i.id === id)
+      if (!inv) return
       const newToken = crypto.randomUUID()
       const { error } = await supabase
         .from('invitations')
@@ -211,12 +212,24 @@ export function InvitationManager({
         .eq('id', id)
       if (error) throw error
 
+      // Send invitation email via edge function
+      const formTitle = forms.find(f => f.id === inv.form_id)?.title ?? ''
+      const { error: fnError } = await supabase.functions.invoke('send-invitation-email', {
+        body: { email: inv.email, token: newToken, formTitle },
+      })
+
       const link = `${window.location.origin}/invite?token=${newToken}`
       void navigator.clipboard.writeText(link)
-      toast.success(
-        `Invitation renewed for ${inv?.email ?? 'user'}`,
-        { description: 'Invite link copied to clipboard' },
-      )
+
+      if (fnError) {
+        toast.success(
+          `Invitation renewed for ${inv.email}`,
+          { description: 'Email failed — link copied to clipboard' },
+        )
+      } else {
+        toast.success(`Invitation email resent to ${inv.email}`)
+      }
+
       void fetchInvitations()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to resend')

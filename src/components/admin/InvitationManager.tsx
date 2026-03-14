@@ -187,17 +187,27 @@ export function InvitationManager({
 
   const resendInvite = async (id: string) => {
     try {
+      const inv = invitations.find(i => i.id === id)
+      const newToken = crypto.randomUUID()
       const { error } = await supabase
         .from('invitations')
         .update({
           status: 'pending' as const,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          token: newToken,
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         })
         .eq('id', id)
       if (error) throw error
+
+      const link = `${window.location.origin}/invite?token=${newToken}`
+      void navigator.clipboard.writeText(link)
+      toast.success(
+        `Invitation renewed for ${inv?.email ?? 'user'}`,
+        { description: 'Invite link copied to clipboard' },
+      )
       void fetchInvitations()
     } catch (err) {
-      console.error('Failed to resend invitation:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to resend')
     }
   }
 

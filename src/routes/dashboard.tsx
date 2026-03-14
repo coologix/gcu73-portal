@@ -25,9 +25,13 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { Submission, Form } from '@/types/database'
+import type { Submission, Form, Invitation } from '@/types/database'
 
 interface SubmissionWithForm extends Submission {
+  form?: Form | null
+}
+
+interface InvitationWithForm extends Invitation {
   form?: Form | null
 }
 
@@ -64,6 +68,7 @@ export default function DashboardPage() {
   const { user, profile, isAdmin, signOut } = useAuth()
 
   const [submissions, setSubmissions] = useState<SubmissionWithForm[]>([])
+  const [pendingInvitations, setPendingInvitations] = useState<InvitationWithForm[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -101,6 +106,26 @@ export default function DashboardPage() {
         }))
 
         setSubmissions(enriched)
+
+        // Also fetch pending invitations for this user's email
+        const { data: invites } = await supabase
+          .from('invitations')
+          .select('*')
+          .eq('email', user!.email ?? '')
+          .eq('status', 'pending')
+
+        if (invites && invites.length > 0) {
+          const invFormIds = [...new Set(invites.map(i => i.form_id))]
+          const { data: invForms } = await supabase
+            .from('forms')
+            .select('*')
+            .in('id', invFormIds)
+
+          const invFormMap = new Map(invForms?.map(f => [f.id, f]) ?? [])
+          setPendingInvitations(
+            invites.map(i => ({ ...i, form: invFormMap.get(i.form_id) ?? null }))
+          )
+        }
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : 'Failed to load submissions',
@@ -165,6 +190,37 @@ export default function DashboardPage() {
         animate="visible"
         variants={stagger}
       >
+        {/* Pending invitations */}
+        {pendingInvitations.length > 0 && (
+          <motion.div variants={fadeUp} custom={0}>
+            <div className="mb-6 space-y-3">
+              <h2 className="text-sm font-semibold text-gcu-maroon-dark">Pending Forms</h2>
+              {pendingInvitations.map((inv) => (
+                <Link
+                  key={inv.id}
+                  to={`/form/${inv.form?.slug ?? ''}`}
+                  className="flex items-center justify-between rounded-lg border border-gcu-gold/30 bg-gcu-cream-dark p-4 transition-all hover:shadow-md hover:shadow-gcu-maroon/5"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-lg bg-gcu-maroon/10">
+                      <FileText className="size-5 text-gcu-maroon" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gcu-maroon-dark">
+                        {inv.form?.title ?? 'Form'}
+                      </p>
+                      <p className="text-xs text-gcu-brown">
+                        You have been invited to submit your details
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="size-4 text-gcu-brown" />
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Update request banner */}
         {hasUpdateRequests && (
           <motion.div variants={fadeUp} custom={0}>

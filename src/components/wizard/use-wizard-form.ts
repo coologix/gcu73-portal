@@ -10,9 +10,10 @@ const STORAGE_PREFIX = 'gcu73_wizard_'
 interface UseWizardFormOptions {
   fields: FormField[]
   formId: string
+  userEmail?: string
 }
 
-export function useWizardForm({ fields, formId }: UseWizardFormOptions) {
+export function useWizardForm({ fields, formId, userEmail }: UseWizardFormOptions) {
   const [currentStep, setCurrentStep] = useState(0)
   const [direction, setDirection] = useState(0)
 
@@ -31,13 +32,17 @@ export function useWizardForm({ fields, formId }: UseWizardFormOptions) {
         // Corrupted data, ignore
       }
     }
-    // Initialize all fields with empty strings
+    // Initialize all fields — prefill email fields with user's email
     const defaults: Record<string, string> = {}
     for (const field of fields) {
-      defaults[field.id] = ''
+      if (field.field_type === 'email' && userEmail) {
+        defaults[field.id] = userEmail
+      } else {
+        defaults[field.id] = ''
+      }
     }
     return defaults
-  }, [fields, storageKey])
+  }, [fields, storageKey, userEmail])
 
   const form = useForm<Record<string, string>>({
     resolver: zodResolver(schema) as Resolver<Record<string, string>>,

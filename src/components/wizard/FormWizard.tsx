@@ -48,6 +48,7 @@ export function FormWizard({ formSlug, onClose }: FormWizardProps) {
           formId={formData.id}
           fields={fields}
           userId={user?.id ?? ''}
+          userEmail={user?.email ?? ''}
           isSubmitting={isSubmitting}
           submitError={submitError}
           onClose={onClose}
@@ -136,6 +137,7 @@ interface WizardContentProps {
   formId: string
   fields: FormFieldType[]
   userId: string
+  userEmail: string
   isSubmitting: boolean
   submitError: string | null
   onClose?: () => void
@@ -145,11 +147,12 @@ interface WizardContentProps {
 function WizardContent({
   formId,
   fields,
+  userEmail,
   isSubmitting,
   submitError,
   onSubmit,
 }: WizardContentProps) {
-  const wizard = useWizardForm({ fields, formId })
+  const wizard = useWizardForm({ fields, formId, userEmail })
 
   const {
     form,

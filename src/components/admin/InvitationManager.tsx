@@ -91,21 +91,52 @@ export function InvitationManager({
   // ── Send single invite ───────────────────────────────────
 
   const sendSingleInvite = async () => {
-    if (!singleEmail.trim() || !selectedFormId) return
+    const email = singleEmail.trim().toLowerCase()
+    if (!email || !selectedFormId) return
     setSendingSingle(true)
     try {
+      // Check for existing pending invitation
+      const { data: existing } = await supabase
+        .from('invitations')
+        .select('id, status')
+        .eq('email', email)
+        .eq('form_id', selectedFormId)
+        .eq('status', 'pending')
+        .limit(1)
+
+      if (existing && existing.length > 0) {
+        throw new Error(`An invitation is already pending for ${email}`)
+      }
+
+      const token = crypto.randomUUID()
       const { error } = await supabase.from('invitations').insert({
-        email: singleEmail.trim().toLowerCase(),
+        email,
         form_id: selectedFormId,
-        token: crypto.randomUUID(),
+        token,
         invited_by: currentUserId,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       })
       if (error) throw error
+
+      // Send the actual invitation email via Supabase Auth
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/form/${forms.find(f => f.id === selectedFormId)?.slug ?? ''}`,
+        },
+      })
+      if (authError) {
+        console.warn('Could not send invitation email:', authError.message)
+        // Don't throw — the invitation record was created, email sending is best-effort
+      }
+
       setSingleEmail('')
       void fetchInvitations()
     } catch (err) {
-      console.error('Failed to send invitation:', err)
+      const msg = err instanceof Error ? err.message : 'Failed to send invitation'
+      console.error(msg)
+      alert(msg)
     } finally {
       setSendingSingle(false)
     }
@@ -117,20 +148,55 @@ export function InvitationManager({
     if (bulkEmails.length === 0 || !selectedFormId) return
     setSendingBulk(true)
     try {
-      const rows = bulkEmails.map((email) => ({
+      // Check existing pending invitations
+      const { data: existing } = await supabase
+        .from('invitations')
+        .select('email')
+        .eq('form_id', selectedFormId)
+        .eq('status', 'pending')
+
+      const existingEmails = new Set(existing?.map(e => e.email) ?? [])
+      const newEmails = bulkEmails.filter(e => !existingEmails.has(e))
+
+      if (newEmails.length === 0) {
+        alert('All these emails already have pending invitations.')
+        setSendingBulk(false)
+        return
+      }
+
+      const skipped = bulkEmails.length - newEmails.length
+
+      const rows = newEmails.map((email) => ({
         email,
         form_id: selectedFormId,
         token: crypto.randomUUID(),
         invited_by: currentUserId,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       }))
 
       const { error } = await supabase.from('invitations').insert(rows)
       if (error) throw error
+
+      // Send invitation emails (best-effort, don't block on failures)
+      const slug = forms.find(f => f.id === selectedFormId)?.slug ?? ''
+      for (const email of newEmails) {
+        void supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: `${window.location.origin}/form/${slug}`,
+          },
+        })
+      }
+
+      const msg = `${newEmails.length} invitation${newEmails.length !== 1 ? 's' : ''} sent${skipped > 0 ? ` (${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped)` : ''}`
+      alert(msg)
+
       setBulkEmails([])
       void fetchInvitations()
     } catch (err) {
       console.error('Failed to send bulk invitations:', err)
+      alert(err instanceof Error ? err.message : 'Failed to send invitations')
     } finally {
       setSendingBulk(false)
     }

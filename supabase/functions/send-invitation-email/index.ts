@@ -22,12 +22,11 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const siteUrl = Deno.env.get("SITE_URL") || "https://gcu73-portal.vercel.app";
 
-    // Extract JWT
+    // Extract and verify JWT
     const authHeader = req.headers.get("Authorization") ?? "";
     const jwt = authHeader.replace("Bearer ", "");
     if (!jwt) return json({ error: "Missing authorization" }, 401);
 
-    // Verify JWT by calling the Supabase Auth API directly
     const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
         "Authorization": `Bearer ${jwt}`,
@@ -35,18 +34,11 @@ Deno.serve(async (req) => {
       },
     });
 
-    if (!userRes.ok) {
-      const errBody = await userRes.text();
-      console.error("Auth verify failed:", userRes.status, errBody);
-      return json({ error: "Unauthorized" }, 401);
-    }
-
+    if (!userRes.ok) return json({ error: "Unauthorized" }, 401);
     const caller = await userRes.json();
-    const callerId = caller.id;
+    if (!caller.id) return json({ error: "Invalid user" }, 401);
 
-    if (!callerId) return json({ error: "Invalid user" }, 401);
-
-    // Check admin role with service role client (bypasses RLS)
+    // Check admin role
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -54,7 +46,7 @@ Deno.serve(async (req) => {
     const { data: profile } = await adminClient
       .from("profiles")
       .select("role")
-      .eq("id", callerId)
+      .eq("id", caller.id)
       .single();
 
     if (profile?.role !== "admin") {
@@ -69,7 +61,7 @@ Deno.serve(async (req) => {
 
     const inviteLink = `${siteUrl}/invite?token=${token}`;
 
-    // Send invitation email
+    // Try inviting as new user first
     const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
       redirectTo: inviteLink,
       data: {
@@ -78,22 +70,60 @@ Deno.serve(async (req) => {
       },
     });
 
-    if (inviteError) {
-      if (inviteError.message.includes("already") || inviteError.message.includes("registered")) {
-        return json({
-          success: true,
-          message: "User already exists. Share the invite link.",
-          inviteLink,
-          emailSent: false,
-        });
-      }
-      console.error("Invite error:", inviteError.message);
-      return json({ error: inviteError.message }, 500);
+    if (!inviteError) {
+      return json({
+        success: true,
+        message: `Invitation email sent to ${email}`,
+        inviteLink,
+        emailSent: true,
+      });
+    }
+
+    // User already exists — send them a magic link email instead
+    // This uses the magic_link template (branded "Your Login Code")
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: {
+        redirectTo: inviteLink,
+      },
+    });
+
+    if (linkError) {
+      console.error("generateLink error:", linkError.message);
+      return json({
+        success: true,
+        message: `User exists but email could not be sent. Share the link.`,
+        inviteLink,
+        emailSent: false,
+      });
+    }
+
+    // generateLink doesn't send an email — trigger OTP send via anon key
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const otpRes = await fetch(`${supabaseUrl}/auth/v1/otp`, {
+      method: "POST",
+      headers: {
+        "apikey": anonKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!otpRes.ok) {
+      const otpErr = await otpRes.json();
+      console.error("OTP send error:", otpErr);
+      return json({
+        success: true,
+        message: `User exists. Email rate limited. Share the link.`,
+        inviteLink,
+        emailSent: false,
+      });
     }
 
     return json({
       success: true,
-      message: `Invitation email sent to ${email}`,
+      message: `Login code sent to ${email}`,
       inviteLink,
       emailSent: true,
     });

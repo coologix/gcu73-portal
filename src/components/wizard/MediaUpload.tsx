@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Camera, Upload, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
 interface MediaUploadProps {
@@ -12,6 +13,7 @@ interface MediaUploadProps {
 }
 
 export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProps) {
+  const { user } = useAuth()
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string>(value || '')
@@ -25,7 +27,8 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
 
       try {
         const ext = file.name.split('.').pop() ?? 'jpg'
-        const fileName = `${fieldId}/${Date.now()}.${ext}`
+        const userId = user?.id ?? 'anonymous'
+        const fileName = `${userId}/${fieldId}/${Date.now()}.${ext}`
 
         // Simulate progress since Supabase doesn't provide upload progress
         const progressInterval = setInterval(() => {

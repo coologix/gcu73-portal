@@ -51,7 +51,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const handleSession = useCallback(async (sessionUser: User | null) => {
     setUser(sessionUser)
     if (sessionUser) {
-      const p = await fetchProfile(sessionUser.id)
+      let p = await fetchProfile(sessionUser.id)
+
+      // Auto-create profile if it doesn't exist (invited users)
+      if (!p) {
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .upsert({
+            id: sessionUser.id,
+            email: sessionUser.email ?? '',
+            full_name: sessionUser.user_metadata?.full_name ?? null,
+          })
+          .select()
+          .single()
+        p = newProfile
+      }
+
       setProfile(p)
     } else {
       setProfile(null)

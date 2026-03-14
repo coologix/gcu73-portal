@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { UploadedMediaPreview } from '@/components/shared/UploadedMediaPreview'
 import { Separator } from '@/components/ui/separator'
 import type { Submission, SubmissionValue, FormField, Form } from '@/types/database'
 
@@ -227,15 +228,12 @@ export default function SubmissionDetailPage() {
                       )}
                     </dt>
                     <dd className="mt-0.5 text-sm font-medium">
-                      {val?.file_url ? (
-                        <a
-                          href={val.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-amber-600 underline-offset-4 hover:underline"
-                        >
-                          {val.file_name ?? 'View file'}
-                        </a>
+                      {field.field_type === 'media' && val?.file_url ? (
+                        <UploadedMediaPreview
+                          url={val.file_url}
+                          label={field.label}
+                          fileName={val.file_name}
+                        />
                       ) : val?.value ? (
                         val.value
                       ) : (

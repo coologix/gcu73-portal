@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { UploadedMediaPreview } from '@/components/shared/UploadedMediaPreview'
 import { Separator } from '@/components/ui/separator'
 import type { Form, FormField, Submission, SubmissionValue } from '@/types/database'
 
@@ -254,14 +255,11 @@ export default function UserSubmissionDetailPage() {
                     </dt>
                     <dd className="mt-1 text-sm font-medium">
                       {field.field_type === 'media' && value?.file_url ? (
-                        <a
-                          href={value.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gcu-red underline-offset-4 hover:underline"
-                        >
-                          {value.file_name ?? 'View uploaded file'}
-                        </a>
+                        <UploadedMediaPreview
+                          url={value.file_url}
+                          label={field.label}
+                          fileName={value.file_name}
+                        />
                       ) : displayValue ? (
                         field.is_sensitive ? maskValue(displayValue) : displayValue
                       ) : (

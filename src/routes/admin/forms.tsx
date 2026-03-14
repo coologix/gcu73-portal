@@ -8,7 +8,7 @@ import {
   Trash2,
   Loader2,
   FileText,
-  MoreHorizontal,
+  ArrowRight,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -25,9 +25,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Form } from '@/types/database'
@@ -201,8 +198,8 @@ export default function FormsPage() {
                   {forms.map((form) => (
                     <TableRow key={form.id} className="transition-colors hover:bg-gcu-cream/50">
                       <TableCell className="font-medium text-gcu-maroon-dark">
-                          <span className="line-clamp-2">{form.title}</span>
-                        </TableCell>
+                        <span className="line-clamp-2">{form.title}</span>
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <code className="rounded bg-gcu-cream-dark px-1.5 py-0.5 text-xs text-gcu-brown">
                           {form.slug}
@@ -215,19 +212,23 @@ export default function FormsPage() {
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-right">{form.fieldCount}</TableCell>
                       <TableCell className="text-right">
-                        {form.submissionCount > 0 ? (
-                          <Link
-                            to={`/admin/forms/${form.id}/submissions`}
-                            className="font-medium text-gcu-red underline-offset-4 hover:underline"
-                          >
-                            {form.submissionCount}
-                          </Link>
-                        ) : (
-                          form.submissionCount
-                        )}
+                        <span className="inline-flex min-w-9 items-center justify-center rounded-full bg-gcu-cream-dark px-2.5 py-1 text-sm font-semibold text-gcu-maroon-dark">
+                          {form.submissionCount}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+                            onClick={() =>
+                              navigate(`/admin/forms/${form.id}/submissions`)
+                            }
+                          >
+                            View submissions
+                            <ArrowRight className="ml-1.5 size-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon-xs"

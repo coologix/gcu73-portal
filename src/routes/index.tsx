@@ -81,7 +81,7 @@ export default function HomePage() {
       <div className="h-1 bg-gradient-to-r from-gcu-maroon via-gcu-red to-gcu-gold" />
 
       {/* ── Hero ───────────────────────────────────────── */}
-      <section className="relative overflow-hidden">
+      <section className="relative flex min-h-[100dvh] flex-col overflow-hidden">
         {/* Subtle background pattern */}
         <div className="absolute inset-0 bg-gcu-cream" />
         <div className="absolute inset-0 opacity-[0.03]" style={{
@@ -89,7 +89,7 @@ export default function HomePage() {
         }} />
 
         <motion.div
-          className="relative mx-auto max-w-3xl px-6 pb-20 pt-16 text-center sm:pt-24 md:pb-28 md:pt-32"
+          className="relative mx-auto flex max-w-3xl flex-1 flex-col items-center justify-center px-6 py-12 text-center sm:py-20 md:py-28"
           initial="hidden"
           animate="visible"
           variants={stagger}

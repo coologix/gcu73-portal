@@ -107,7 +107,8 @@ export default function DashboardPage() {
 
         setSubmissions(enriched)
 
-        // Also fetch pending invitations for this user's email
+        // Also fetch pending invitations — exclude forms already submitted
+        const submittedFormIds = new Set(subs?.map(s => s.form_id) ?? [])
         const { data: invites } = await supabase
           .from('invitations')
           .select('*')
@@ -115,16 +116,23 @@ export default function DashboardPage() {
           .eq('status', 'pending')
 
         if (invites && invites.length > 0) {
-          const invFormIds = [...new Set(invites.map(i => i.form_id))]
-          const { data: invForms } = await supabase
-            .from('forms')
-            .select('*')
-            .in('id', invFormIds)
+          // Filter out invitations for forms the user already submitted
+          const pendingInvites = invites.filter(i => !submittedFormIds.has(i.form_id))
 
-          const invFormMap = new Map(invForms?.map(f => [f.id, f]) ?? [])
-          setPendingInvitations(
-            invites.map(i => ({ ...i, form: invFormMap.get(i.form_id) ?? null }))
-          )
+          const invFormIds = [...new Set(pendingInvites.map(i => i.form_id))]
+          if (invFormIds.length === 0) {
+            setPendingInvitations([])
+          } else {
+            const { data: invForms } = await supabase
+              .from('forms')
+              .select('*')
+              .in('id', invFormIds)
+
+            const invFormMap = new Map(invForms?.map(f => [f.id, f]) ?? [])
+            setPendingInvitations(
+              pendingInvites.map(i => ({ ...i, form: invFormMap.get(i.form_id) ?? null }))
+            )
+          }
         }
       } catch (err) {
         toast.error(

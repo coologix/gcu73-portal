@@ -94,6 +94,19 @@ export function FormWizard({ formSlug, onClose }: FormWizardProps) {
 
               if (valuesError) throw new Error(valuesError.message)
 
+              // 3. Mark any pending invitations for this user+form as completed
+              if (user?.email) {
+                await supabase
+                  .from('invitations')
+                  .update({
+                    status: 'completed' as const,
+                    completed_at: new Date().toISOString(),
+                  })
+                  .eq('email', user.email)
+                  .eq('form_id', formData.id)
+                  .eq('status', 'pending')
+              }
+
               setSubmitted(true)
             } catch (err) {
               setSubmitError(

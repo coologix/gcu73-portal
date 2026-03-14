@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router'
 import { toast } from 'sonner'
 import { Loader2, AlertTriangle, CheckCircle, Mail } from 'lucide-react'
@@ -28,11 +28,6 @@ export default function InvitePage() {
   const [invitation, setInvitation] = useState<Invitation | null>(null)
   const [form, setForm] = useState<Form | null>(null)
   const [isSendingOtp, setIsSendingOtp] = useState(false)
-
-  const buildInviteRedirect = useCallback((slug: string) => {
-    const params = new URLSearchParams({ inviteToken: token })
-    return `/form/${slug}?${params.toString()}`
-  }, [token])
 
   // ── Validate the invitation token ──────────────────────────
 
@@ -89,8 +84,8 @@ export default function InvitePage() {
         setStatus('valid')
 
         // If user is already logged in and matches the invitation email, redirect
-        if (user?.email?.toLowerCase() === data.email.toLowerCase() && formData) {
-          navigate(buildInviteRedirect(formData.slug), { replace: true })
+        if (user?.email?.toLowerCase() === data.email.toLowerCase()) {
+          navigate('/dashboard', { replace: true })
         }
       } catch {
         setStatus('invalid')
@@ -98,7 +93,7 @@ export default function InvitePage() {
     }
 
     void validateToken()
-  }, [buildInviteRedirect, navigate, token, user])
+  }, [navigate, token, user])
 
   // ── Send OTP ───────────────────────────────────────────────
 
@@ -119,7 +114,7 @@ export default function InvitePage() {
       // Navigate to verify with invitation context
       const params = new URLSearchParams({
         email: invitation.email,
-        redirectTo: form ? buildInviteRedirect(form.slug) : '/dashboard',
+        redirectTo: '/dashboard',
       })
       navigate(`/verify?${params.toString()}`)
     } catch {

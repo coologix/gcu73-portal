@@ -41,24 +41,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Fetch profile from the profiles table
   const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-    if (error) {
-      console.error('Failed to fetch profile:', error.message)
+      if (error) {
+        console.error('Failed to fetch profile:', error.message)
+        setProfile(null)
+      } else {
+        setProfile(data)
+      }
+    } catch (err) {
+      console.error('Profile fetch exception:', err)
       setProfile(null)
-    } else {
-      setProfile(data)
     }
   }, [])
 
   // Listen for auth state changes
   useEffect(() => {
+    let mounted = true
+
     // Get the initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return
+
       const currentUser = session?.user ?? null
       setUser(currentUser)
 
@@ -66,13 +75,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         await fetchProfile(currentUser.id)
       }
 
-      setLoading(false)
+      if (mounted) setLoading(false)
+    }).catch(() => {
+      if (mounted) setLoading(false)
     })
 
     // Subscribe to future changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return
+
       const currentUser = session?.user ?? null
       setUser(currentUser)
 
@@ -82,10 +95,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setProfile(null)
       }
 
-      setLoading(false)
+      if (mounted) setLoading(false)
     })
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [fetchProfile])

@@ -123,11 +123,23 @@ export function InvitationManager({
       })
       if (error) throw error
 
+      // Send invitation email via edge function
+      const formTitle = forms.find(f => f.id === selectedFormId)?.title ?? ''
+      const { error: fnError } = await supabase.functions.invoke('send-invitation-email', {
+        body: { email, token, formTitle },
+      })
+
       const inviteLink = `${window.location.origin}/invite?token=${token}`
-      toast.success(
-        `Invitation created for ${email}`,
-        { description: `Share this link: ${inviteLink}` },
-      )
+      if (fnError) {
+        // Email failed but invitation was created — show link to share manually
+        toast.success(
+          `Invitation created for ${email}`,
+          { description: `Email could not be sent. Share this link: ${inviteLink}` },
+        )
+      } else {
+        toast.success(`Invitation email sent to ${email}`)
+      }
+
       setSingleEmail('')
       void fetchInvitations()
     } catch (err) {

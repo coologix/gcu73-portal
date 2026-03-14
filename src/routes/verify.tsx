@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 const OTP_LENGTH = 6
-const RESEND_COOLDOWN = 60
+const RESEND_COOLDOWN = 1
 
 export default function VerifyPage() {
   const navigate = useNavigate()

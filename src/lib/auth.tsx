@@ -12,6 +12,7 @@ import type { ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { Profile, ProfileUpdate } from '@/types/database'
 import { supabase } from '@/lib/supabase'
+import { ensureProfileForUser } from '@/lib/profiles'
 
 interface AuthContextValue {
   user: User | null
@@ -58,16 +59,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Auto-create profile if it doesn't exist (invited users)
       if (!p) {
-        const { data: newProfile } = await supabase
-          .from('profiles')
-          .upsert({
-            id: sessionUser.id,
-            email: sessionUser.email ?? '',
-            full_name: sessionUser.user_metadata?.full_name ?? null,
-          })
-          .select()
-          .single()
-        p = newProfile
+        try {
+          p = await ensureProfileForUser(sessionUser)
+        } catch (err) {
+          console.error(
+            'Failed to ensure profile for authenticated user:',
+            err instanceof Error ? err.message : err,
+          )
+        }
       }
 
       setProfile(p)

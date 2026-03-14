@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { CheckCircle2, Loader2, AlertCircle, X } from 'lucide-react'
 import { useFormData } from '@/hooks/use-form-data'
 import { useAuth } from '@/lib/auth'
+import { ensureProfileForUser } from '@/lib/profiles'
 import { supabase } from '@/lib/supabase'
 import { completeInvitationForCurrentUser } from '@/lib/invitations'
 import { useWizardForm } from './use-wizard-form'
@@ -85,6 +86,12 @@ export function FormWizard({
             setSubmitError(null)
 
             try {
+              if (!user) {
+                throw new Error('You need to be signed in to submit this form')
+              }
+
+              await ensureProfileForUser(user)
+
               const submittedAt = new Date().toISOString()
               let activeSubmissionId = submission?.id
 
@@ -94,7 +101,7 @@ export function FormWizard({
                   .update({
                     status: 'submitted',
                     submitted_at: submittedAt,
-                    submitted_by: user?.id ?? submission.submitted_by,
+                    submitted_by: user.id,
                   })
                   .eq('id', submission.id)
 
@@ -104,8 +111,8 @@ export function FormWizard({
               } else {
                 const insertPayload: SubmissionInsert = {
                   form_id: formData.id,
-                  user_id: user?.id ?? '',
-                  submitted_by: user?.id ?? '',
+                  user_id: user.id,
+                  submitted_by: user.id,
                   status: 'submitted',
                   submitted_at: submittedAt,
                 }
@@ -156,7 +163,7 @@ export function FormWizard({
               if (valuesError) throw new Error(valuesError.message)
 
               // Best-effort invitation reconciliation after a successful save.
-              if (user?.email) {
+              if (user.email) {
                 const { error: invitationError } =
                   await completeInvitationForCurrentUser({
                     formId: formData.id,

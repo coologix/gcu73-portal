@@ -126,7 +126,7 @@ export function InvitationManager({
       // Send invitation email via edge function
       const formTitle = forms.find(f => f.id === selectedFormId)?.title ?? ''
       const { error: fnError } = await supabase.functions.invoke('send-invitation-email', {
-        body: { email, token, formTitle },
+        body: { email, token, formTitle, callerUserId: currentUserId },
       })
 
       const inviteLink = `${window.location.origin}/invite?token=${token}`
@@ -215,7 +215,7 @@ export function InvitationManager({
       // Send invitation email via edge function
       const formTitle = forms.find(f => f.id === inv.form_id)?.title ?? ''
       const { error: fnError } = await supabase.functions.invoke('send-invitation-email', {
-        body: { email: inv.email, token: newToken, formTitle },
+        body: { email: inv.email, token: newToken, formTitle, callerUserId: currentUserId },
       })
 
       const link = `${window.location.origin}/invite?token=${newToken}`

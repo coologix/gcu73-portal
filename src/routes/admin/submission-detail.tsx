@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { toast } from 'sonner'
-import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react'
+import { Loader2, ArrowLeft, AlertCircle, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { UploadedMediaPreview } from '@/components/shared/UploadedMediaPreview'
 import { Separator } from '@/components/ui/separator'
 import type { Submission, SubmissionValue, FormField, Form } from '@/types/database'
@@ -30,6 +31,8 @@ export default function SubmissionDetailPage() {
   const [form, setForm] = useState<Form | null>(null)
   const [submitterLabel, setSubmitterLabel] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   useEffect(() => {
     if (!formId || !submissionId) return
@@ -111,6 +114,30 @@ export default function SubmissionDetailPage() {
     }
   }
 
+  async function handleDeleteSubmission() {
+    if (!submission || !formId) return
+
+    setIsDeleting(true)
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('id', submission.id)
+
+      if (error) throw new Error(error.message)
+
+      toast.success('Submission deleted')
+      navigate(`/admin/forms/${formId}/submissions`, { replace: true })
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to delete submission',
+      )
+    } finally {
+      setIsDeleting(false)
+      setConfirmDeleteOpen(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -130,6 +157,20 @@ export default function SubmissionDetailPage() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setConfirmDeleteOpen(open)
+          }
+        }}
+        title="Delete submission"
+        description={`Delete the submission from ${submitterLabel || submission.user_id}. This will permanently remove all saved responses for this form.`}
+        confirmText={isDeleting ? 'Deleting...' : 'Delete submission'}
+        onConfirm={handleDeleteSubmission}
+        variant="destructive"
+      />
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button
@@ -148,17 +189,29 @@ export default function SubmissionDetailPage() {
             {form?.title ?? 'Form'} &middot; {submitterLabel || submission.user_id}
           </p>
         </div>
-        <Badge
-          variant={
-            submission.status === 'submitted'
-              ? 'default'
-              : submission.status === 'update_requested'
-                ? 'destructive'
-                : 'secondary'
-          }
-        >
-          {submission.status.replace('_', ' ')}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant={
+              submission.status === 'submitted'
+                ? 'default'
+                : submission.status === 'update_requested'
+                  ? 'destructive'
+                  : 'secondary'
+            }
+          >
+            {submission.status.replace('_', ' ')}
+          </Badge>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-destructive/30 text-destructive hover:bg-destructive/10"
+            onClick={() => setConfirmDeleteOpen(true)}
+          >
+            <Trash2 className="mr-1.5 size-4" />
+            Delete
+          </Button>
+        </div>
       </div>
 
       {/* Metadata */}

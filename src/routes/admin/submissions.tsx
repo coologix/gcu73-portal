@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Search,
   FileText,
+  Trash2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -15,6 +16,7 @@ import {
   Card,
   CardContent,
 } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import {
   Table,
   TableBody,
@@ -47,6 +49,8 @@ export default function SubmissionsPage() {
   const [form, setForm] = useState<Form | null>(null)
   const [submissions, setSubmissions] = useState<SubmissionListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [deleteTarget, setDeleteTarget] = useState<SubmissionListItem | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
@@ -128,8 +132,50 @@ export default function SubmissionsPage() {
     return matchesStatus && matchesSearch
   })
 
+  async function handleDeleteSubmission() {
+    if (!deleteTarget) return
+
+    setIsDeleting(true)
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('id', deleteTarget.id)
+
+      if (error) throw new Error(error.message)
+
+      setSubmissions((prev) => prev.filter((submission) => submission.id !== deleteTarget.id))
+      toast.success('Submission deleted')
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to delete submission',
+      )
+    } finally {
+      setIsDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setDeleteTarget(null)
+          }
+        }}
+        title="Delete submission"
+        description={
+          deleteTarget
+            ? `Delete the submission from ${deleteTarget.submitterName}. This will permanently remove all saved responses for this form.`
+            : 'Delete this submission.'
+        }
+        confirmText={isDeleting ? 'Deleting...' : 'Delete submission'}
+        onConfirm={handleDeleteSubmission}
+        variant="destructive"
+      />
+
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
@@ -248,9 +294,20 @@ export default function SubmissionsPage() {
                       })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link to={`/admin/forms/${formId}/submissions/${sub.id}`} className={cn(buttonVariants({ variant: "ghost", size: "xs" }))}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link to={`/admin/forms/${formId}/submissions/${sub.id}`} className={cn(buttonVariants({ variant: "ghost", size: "xs" }))}>
                           View
-                      </Link>
+                        </Link>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => setDeleteTarget(sub)}
+                          title={`Delete submission from ${sub.submitterName}`}
+                        >
+                          <Trash2 className="size-3.5 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -119,14 +119,14 @@ export function PortalHeader({ leading, className }: PortalHeaderProps) {
               </Avatar>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" sideOffset={8}>
+          <DropdownMenuContent align="end" sideOffset={8} className="min-w-56">
             <DropdownMenuGroup>
               <DropdownMenuLabel>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium truncate max-w-[220px]">
                     {profile?.full_name ?? "User"}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground truncate max-w-[220px]">
                     {profile?.email ?? ""}
                   </span>
                 </div>

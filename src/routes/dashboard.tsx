@@ -61,7 +61,7 @@ const stagger = {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, isAdmin, signOut } = useAuth()
 
   const [submissions, setSubmissions] = useState<SubmissionWithForm[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -142,10 +142,20 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-gcu-brown hover:text-gcu-maroon">
-            <LogOut className="mr-1.5 size-3.5" />
-            Sign out
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'text-gcu-maroon border-gcu-maroon/20 hover:bg-gcu-cream')}
+              >
+                Admin Panel
+              </Link>
+            )}
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-gcu-brown hover:text-gcu-maroon">
+              <LogOut className="mr-1.5 size-3.5" />
+              Sign out
+            </Button>
+          </div>
         </div>
       </header>
 

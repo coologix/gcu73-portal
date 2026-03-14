@@ -46,15 +46,18 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
 
         if (uploadError) throw uploadError
 
-        // Get the public URL
-        const { data: urlData } = supabase.storage
+        // Get a signed URL (bucket is private)
+        const { data: urlData, error: urlError } = await supabase.storage
           .from('submissions')
-          .getPublicUrl(data.path)
+          .createSignedUrl(data.path, 60 * 60 * 24 * 365) // 1 year
 
-        const publicUrl = urlData.publicUrl
+        if (urlError) throw urlError
+
+        const signedUrl = urlData.signedUrl
         setUploadProgress(100)
-        setPreviewUrl(publicUrl)
-        onChange(publicUrl)
+        setPreviewUrl(signedUrl)
+        // Store the path (not the signed URL) as the value — signed URLs expire
+        onChange(data.path)
       } catch (err) {
         console.error('Upload failed:', err)
         setUploadProgress(0)

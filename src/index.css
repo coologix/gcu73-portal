@@ -5,108 +5,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(222.2 84% 4.9%);
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(222.2 84% 4.9%);
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(222.2 84% 4.9%);
-  --color-primary: hsl(222.2 47.4% 11.2%);
-  --color-primary-foreground: hsl(210 40% 98%);
-  --color-secondary: hsl(210 40% 96.1%);
-  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
-  --color-muted: hsl(210 40% 96.1%);
-  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
-  --color-accent: hsl(210 40% 96.1%);
-  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
-  --color-destructive: hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(210 40% 98%);
-  --color-border: hsl(214.3 31.8% 91.4%);
-  --color-input: hsl(214.3 31.8% 91.4%);
-  --color-ring: hsl(222.2 84% 4.9%);
-  --color-chart-1: hsl(12 76% 61%);
-  --color-chart-2: hsl(173 58% 39%);
-  --color-chart-3: hsl(197 37% 24%);
-  --color-chart-4: hsl(43 74% 66%);
-  --color-chart-5: hsl(27 87% 67%);
-  --color-sidebar-background: hsl(0 0% 98%);
-  --color-sidebar-foreground: hsl(240 5.3% 26.1%);
-  --color-sidebar-primary: hsl(240 5.9% 10%);
-  --color-sidebar-primary-foreground: hsl(0 0% 98%);
-  --color-sidebar-accent: hsl(240 4.8% 95.9%);
-  --color-sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --color-sidebar-border: hsl(220 13% 91%);
-  --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
-  --radius: 0.625rem;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-}
-
-.dark {
-  --color-background: hsl(222.2 84% 4.9%);
-  --color-foreground: hsl(210 40% 98%);
-  --color-card: hsl(222.2 84% 4.9%);
-  --color-card-foreground: hsl(210 40% 98%);
-  --color-popover: hsl(222.2 84% 4.9%);
-  --color-popover-foreground: hsl(210 40% 98%);
-  --color-primary: hsl(210 40% 98%);
-  --color-primary-foreground: hsl(222.2 47.4% 11.2%);
-  --color-secondary: hsl(217.2 32.6% 17.5%);
-  --color-secondary-foreground: hsl(210 40% 98%);
-  --color-muted: hsl(217.2 32.6% 17.5%);
-  --color-muted-foreground: hsl(215 20.2% 65.1%);
-  --color-accent: hsl(217.2 32.6% 17.5%);
-  --color-accent-foreground: hsl(210 40% 98%);
-  --color-destructive: hsl(0 62.8% 30.6%);
-  --color-destructive-foreground: hsl(210 40% 98%);
-  --color-border: hsl(217.2 32.6% 17.5%);
-  --color-input: hsl(217.2 32.6% 17.5%);
-  --color-ring: hsl(212.7 26.8% 83.9%);
-  --color-chart-1: hsl(220 70% 50%);
-  --color-chart-2: hsl(160 60% 45%);
-  --color-chart-3: hsl(30 80% 55%);
-  --color-chart-4: hsl(280 65% 60%);
-  --color-chart-5: hsl(340 75% 55%);
-  --color-sidebar-background: hsl(240 5.9% 10%);
-  --color-sidebar-foreground: hsl(240 4.8% 95.9%);
-  --color-sidebar-primary: hsl(224.3 76.3% 48%);
-  --color-sidebar-primary-foreground: hsl(0 0% 100%);
-  --color-sidebar-accent: hsl(240 3.7% 15.9%);
-  --color-sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --color-sidebar-border: hsl(240 3.7% 15.9%);
-  --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
+/*
+ * GCU'73 Portal — "Warm Elegance" Design System
+ *
+ * School colors: Red, Pink & Brown
+ * Palette: Rich burgundy + warm gold accents on light, airy canvas
+ * Typography: Playfair Display (serif headings) + Geist (body)
+ */
 
 @layer base {
   * {
@@ -117,47 +22,111 @@
     margin: 0;
   }
   html {
-    @apply font-sans;
+    @apply font-sans antialiased;
   }
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* ── GCU Brand Tokens (refined) ──────────── */
+  --gcu-maroon: #6B1D1D;
+  --gcu-maroon-light: #8B3232;
+  --gcu-maroon-dark: #4A1212;
+  --gcu-brown: #7A4B3A;
+  --gcu-brown-light: #9B6B55;
+  --gcu-red: #B33A2E;
+  --gcu-red-hover: #9A3026;
+  --gcu-gold: #B8932A;
+  --gcu-gold-light: #D4AF5A;
+  --gcu-cream: #FAF7F2;
+  --gcu-cream-dark: #F0EBE3;
+  --gcu-pink: #F2DDD5;
+  --gcu-pink-light: #FBF5F2;
+
+  /* ── shadcn design tokens ────────────────── */
+  --background: oklch(0.995 0.003 80);
+  --foreground: oklch(0.18 0.015 50);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.18 0.015 50);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.18 0.015 50);
+  --primary: oklch(0.35 0.09 20);
+  --primary-foreground: oklch(0.98 0.003 80);
+  --secondary: oklch(0.96 0.008 60);
+  --secondary-foreground: oklch(0.35 0.09 20);
+  --muted: oklch(0.96 0.005 60);
+  --muted-foreground: oklch(0.48 0.015 50);
+  --accent: oklch(0.96 0.008 60);
+  --accent-foreground: oklch(0.35 0.09 20);
+  --destructive: oklch(0.55 0.22 27);
+  --border: oklch(0.92 0.006 60);
+  --input: oklch(0.92 0.006 60);
+  --ring: oklch(0.35 0.09 20);
+  --chart-1: oklch(0.50 0.15 22);
+  --chart-2: oklch(0.65 0.10 80);
+  --chart-3: oklch(0.50 0.08 40);
+  --chart-4: oklch(0.60 0.06 55);
+  --chart-5: oklch(0.40 0.12 22);
+  --radius: 0.5rem;
+
+  --sidebar: oklch(0.985 0.003 60);
+  --sidebar-foreground: oklch(0.18 0.015 50);
+  --sidebar-primary: oklch(0.35 0.09 20);
+  --sidebar-primary-foreground: oklch(0.98 0.003 80);
+  --sidebar-accent: oklch(0.96 0.005 60);
+  --sidebar-accent-foreground: oklch(0.35 0.09 20);
+  --sidebar-border: oklch(0.92 0.006 60);
+  --sidebar-ring: oklch(0.35 0.09 20);
+}
+
+.dark {
+  --background: oklch(0.14 0.01 50);
+  --foreground: oklch(0.96 0.003 80);
+  --card: oklch(0.17 0.01 50);
+  --card-foreground: oklch(0.96 0.003 80);
+  --popover: oklch(0.17 0.01 50);
+  --popover-foreground: oklch(0.96 0.003 80);
+  --primary: oklch(0.72 0.10 80);
+  --primary-foreground: oklch(0.14 0.01 50);
+  --secondary: oklch(0.22 0.01 50);
+  --secondary-foreground: oklch(0.96 0.003 80);
+  --muted: oklch(0.22 0.01 50);
+  --muted-foreground: oklch(0.62 0.01 50);
+  --accent: oklch(0.22 0.01 50);
+  --accent-foreground: oklch(0.96 0.003 80);
+  --destructive: oklch(0.60 0.18 22);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.72 0.10 80);
+  --sidebar: oklch(0.17 0.01 50);
+  --sidebar-foreground: oklch(0.96 0.003 80);
+  --sidebar-primary: oklch(0.72 0.10 80);
+  --sidebar-primary-foreground: oklch(0.14 0.01 50);
+  --sidebar-accent: oklch(0.22 0.01 50);
+  --sidebar-accent-foreground: oklch(0.96 0.003 80);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.72 0.10 80);
 }
 
 @theme inline {
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+
+  /* GCU brand color utilities */
+  --color-gcu-maroon: var(--gcu-maroon);
+  --color-gcu-maroon-light: var(--gcu-maroon-light);
+  --color-gcu-maroon-dark: var(--gcu-maroon-dark);
+  --color-gcu-brown: var(--gcu-brown);
+  --color-gcu-brown-light: var(--gcu-brown-light);
+  --color-gcu-red: var(--gcu-red);
+  --color-gcu-red-hover: var(--gcu-red-hover);
+  --color-gcu-gold: var(--gcu-gold);
+  --color-gcu-gold-light: var(--gcu-gold-light);
+  --color-gcu-cream: var(--gcu-cream);
+  --color-gcu-cream-dark: var(--gcu-cream-dark);
+  --color-gcu-pink: var(--gcu-pink);
+  --color-gcu-pink-light: var(--gcu-pink-light);
+
+  /* shadcn token mappings */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

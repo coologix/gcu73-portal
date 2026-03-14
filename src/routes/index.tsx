@@ -173,6 +173,33 @@ export default function HomePage() {
             </span>
           </motion.div>
         </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          className="absolute bottom-6 left-1/2 -translate-x-1/2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 0.8 }}
+        >
+          <motion.div
+            className="flex flex-col items-center gap-2"
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-gcu-brown-light">Scroll</span>
+            <svg width="20" height="28" viewBox="0 0 20 28" fill="none" className="text-gcu-brown-light">
+              <rect x="1" y="1" width="18" height="26" rx="9" stroke="currentColor" strokeWidth="1.5" />
+              <motion.circle
+                cx="10"
+                cy="8"
+                r="2.5"
+                fill="currentColor"
+                animate={{ cy: [8, 18, 8] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </svg>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* ── How It Works ─────────────────────────────── */}

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useParams } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider, useAuth } from '@/lib/auth'
+import { useLenis } from '@/hooks/use-lenis'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { AdminGuard } from '@/components/auth/AdminGuard'
 import { PortalLayout } from '@/components/layout/PortalLayout'
@@ -62,6 +63,8 @@ function LegacyAdminSubmissionRedirect() {
 }
 
 function App() {
+  useLenis()
+
   return (
     <AuthProvider>
       <TooltipProvider>

@@ -5,6 +5,7 @@ import {
   useState,
   useMemo,
   useCallback,
+  useRef,
 } from 'react'
 import type { ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const initialized = useRef(false)
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     try {
@@ -39,71 +41,72 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .select('*')
         .eq('id', userId)
         .single()
-
-      if (error || !data) {
-        console.error('Failed to fetch profile:', error?.message)
-        return null
-      }
+      if (error || !data) return null
       return data
-    } catch (err) {
-      console.error('Profile fetch exception:', err)
+    } catch {
       return null
     }
   }, [])
 
+  const handleSession = useCallback(async (sessionUser: User | null) => {
+    setUser(sessionUser)
+    if (sessionUser) {
+      const p = await fetchProfile(sessionUser.id)
+      setProfile(p)
+    } else {
+      setProfile(null)
+    }
+    setLoading(false)
+  }, [fetchProfile])
+
   useEffect(() => {
-    // Use onAuthStateChange as the single source of truth.
-    // It fires INITIAL_SESSION on mount (replaces getSession).
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user ?? null
-      setUser(currentUser)
-
-      if (currentUser) {
-        const p = await fetchProfile(currentUser.id)
-        setProfile(p)
-      } else {
-        setProfile(null)
+    // 1. Immediately check for existing session (handles page reload)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!initialized.current) {
+        initialized.current = true
+        void handleSession(session?.user ?? null)
       }
-
-      setLoading(false)
+    }).catch(() => {
+      if (!initialized.current) {
+        initialized.current = true
+        setLoading(false)
+      }
     })
 
-    // Safety timeout — if onAuthStateChange never fires (e.g. network issue),
-    // stop loading after 5 seconds so the UI doesn't hang forever.
+    // 2. Listen for auth changes (handles login/logout/token refresh)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Skip INITIAL_SESSION if getSession already handled it
+      if (!initialized.current) {
+        initialized.current = true
+      }
+      void handleSession(session?.user ?? null)
+    })
+
+    // 3. Safety: never hang forever
     const timeout = setTimeout(() => {
-      setLoading((prev) => {
-        if (prev) {
-          console.warn('Auth loading timed out')
-          return false
-        }
-        return prev
-      })
-    }, 5000)
+      if (!initialized.current) {
+        initialized.current = true
+        setLoading(false)
+      }
+    }, 4000)
 
     return () => {
       subscription.unsubscribe()
       clearTimeout(timeout)
     }
-  }, [fetchProfile])
+  }, [handleSession])
 
   const signInWithOtp = useCallback(async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({ email })
     return { error: error ? new Error(error.message) : null }
   }, [])
 
-  const verifyOtp = useCallback(
-    async (email: string, token: string) => {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token,
-        type: 'email',
-      })
-      return { error: error ? new Error(error.message) : null }
-    },
-    [],
-  )
+  const verifyOtp = useCallback(async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+    return { error: error ? new Error(error.message) : null }
+  }, [])
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
@@ -123,8 +126,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an <AuthProvider>')
-  }
+  if (!context) throw new Error('useAuth must be used within <AuthProvider>')
   return context
 }

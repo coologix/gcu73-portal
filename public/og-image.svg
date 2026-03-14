@@ -1,0 +1,62 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Cross-stitch pattern (matching login page) -->
+    <pattern id="crossStitch" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+      <g fill="#ffffff" fill-opacity="1">
+        <path d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/>
+      </g>
+    </pattern>
+  </defs>
+
+  <!-- Background: dark maroon -->
+  <rect width="1200" height="630" fill="#4A1212"/>
+
+  <!-- Subtle cross-stitch pattern overlay -->
+  <rect width="1200" height="630" fill="url(#crossStitch)" opacity="0.04"/>
+
+  <!-- Subtle gradient overlay for depth -->
+  <rect width="1200" height="630" fill="url(#grad)" opacity="0.3"/>
+  <defs>
+    <radialGradient id="grad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#6B1D1D" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#4A1212" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Top decorative line -->
+  <rect x="0" y="0" width="1200" height="4" fill="#D4AF5A" opacity="0.6"/>
+
+  <!-- Graduation cap icon (centered near top) -->
+  <g transform="translate(600, 190)" fill="#D4AF5A">
+    <!-- Cap board (diamond/rhombus shape) -->
+    <polygon points="0,-45 80,-15 0,15 -80,-15" fill="#D4AF5A"/>
+    <!-- Cap base/band -->
+    <path d="M-40,0 L-40,25 Q0,50 40,25 L40,0 Q0,20 -40,0 Z" fill="#D4AF5A" opacity="0.85"/>
+    <!-- Tassel string -->
+    <line x1="80" y1="-15" x2="95" y2="30" stroke="#D4AF5A" stroke-width="2.5"/>
+    <!-- Tassel end -->
+    <circle cx="95" cy="33" r="5" fill="#D4AF5A"/>
+    <rect x="90" y="33" width="10" height="12" rx="2" fill="#D4AF5A"/>
+  </g>
+
+  <!-- Main text: "GCU Class of '73" -->
+  <text x="600" y="320" text-anchor="middle" font-family="Georgia, 'Playfair Display', serif" font-size="72" font-weight="bold" fill="#FFFFFF" letter-spacing="2">
+    GCU Class of '73
+  </text>
+
+  <!-- Subtitle: "Group Life Insurance Portal" -->
+  <text x="600" y="385" text-anchor="middle" font-family="Georgia, 'Playfair Display', serif" font-size="32" fill="#D4AF5A" letter-spacing="1.5">
+    Group Life Insurance Portal
+  </text>
+
+  <!-- Decorative divider line -->
+  <line x1="450" y1="420" x2="750" y2="420" stroke="#D4AF5A" stroke-width="1" opacity="0.4"/>
+
+  <!-- Bottom text -->
+  <text x="600" y="470" text-anchor="middle" font-family="Georgia, 'Playfair Display', serif" font-size="22" fill="#FFFFFF" opacity="0.6" letter-spacing="3">
+    Government College Umuahia · Est. 1929
+  </text>
+
+  <!-- Bottom decorative line -->
+  <rect x="0" y="626" width="1200" height="4" fill="#D4AF5A" opacity="0.6"/>
+</svg>

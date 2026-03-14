@@ -1,0 +1,22 @@
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cream/white background -->
+  <rect width="180" height="180" rx="20" fill="#FFF8F0"/>
+
+  <!-- Graduation cap icon in maroon -->
+  <g transform="translate(90, 78)" fill="#6B1D1D">
+    <!-- Cap board (diamond/rhombus shape) -->
+    <polygon points="0,-32 56,-11 0,10 -56,-11"/>
+    <!-- Cap base/band -->
+    <path d="M-28,3 L-28,20 Q0,35 28,20 L28,3 Q0,15 -28,3 Z" opacity="0.85"/>
+    <!-- Tassel string -->
+    <line x1="56" y1="-11" x2="65" y2="22" stroke="#6B1D1D" stroke-width="2"/>
+    <!-- Tassel end -->
+    <circle cx="65" cy="24" r="3.5" fill="#6B1D1D"/>
+    <rect x="61.5" y="24" width="7" height="9" rx="1.5" fill="#6B1D1D"/>
+  </g>
+
+  <!-- "GCU'73" text below -->
+  <text x="90" y="135" text-anchor="middle" font-family="Georgia, serif" font-size="24" font-weight="bold" fill="#6B1D1D" letter-spacing="1">
+    GCU'73
+  </text>
+</svg>

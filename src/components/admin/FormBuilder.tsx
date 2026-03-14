@@ -25,6 +25,7 @@ import {
   Loader2,
   Asterisk,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -95,8 +96,9 @@ function SortableField({ field, onEdit, onDelete }: SortableFieldProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card p-3 ring-1 ring-transparent transition-shadow',
-        isDragging && 'z-10 shadow-lg ring-primary/30',
+        'group flex items-center gap-3 rounded-lg border border-gcu-cream-dark bg-white p-4 transition-all',
+        isDragging && 'z-10 shadow-lg shadow-gcu-maroon/10 border-gcu-maroon/30',
+        !isDragging && 'hover:border-gcu-maroon/20 hover:shadow-sm',
       )}
     >
       {/* Drag handle */}
@@ -111,13 +113,13 @@ function SortableField({ field, onEdit, onDelete }: SortableFieldProps) {
 
       {/* Field info */}
       <div className="flex flex-1 items-center gap-2 overflow-hidden">
-        <span className="truncate text-sm font-medium">{field.label}</span>
+        <span className="truncate text-sm font-semibold text-gcu-maroon-dark">{field.label}</span>
         {field.is_required && (
           <Asterisk className="size-3 shrink-0 text-red-500" />
         )}
       </div>
 
-      <Badge variant="secondary" className="shrink-0 text-[10px]">
+      <Badge variant="secondary" className="shrink-0 rounded-full bg-gcu-cream-dark px-2.5 text-[10px] font-medium text-gcu-brown">
         {field.field_type}
       </Badge>
 
@@ -287,8 +289,9 @@ export function FormBuilder({ formId, initialFields, className }: FormBuilderPro
 
         if (insertError) throw insertError
       }
+      toast.success('Fields saved successfully')
     } catch (err) {
-      console.error('Failed to save form fields:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to save fields')
     } finally {
       setSaving(false)
     }
@@ -322,8 +325,9 @@ export function FormBuilder({ formId, initialFields, className }: FormBuilderPro
       </DndContext>
 
       {fields.length === 0 && (
-        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No fields yet. Add one below to get started.
+        <div className="rounded-xl border-2 border-dashed border-gcu-cream-dark bg-gcu-cream/50 p-12 text-center">
+          <p className="text-sm font-medium text-gcu-maroon-dark">No fields yet</p>
+          <p className="mt-1 text-xs text-gcu-brown">Add a field below to start building your form.</p>
         </div>
       )}
 
@@ -351,6 +355,7 @@ export function FormBuilder({ formId, initialFields, className }: FormBuilderPro
         <Button
           type="button"
           size="sm"
+          className="bg-gcu-maroon hover:bg-gcu-maroon-light"
           onClick={saveAll}
           disabled={saving}
         >

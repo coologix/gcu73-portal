@@ -121,20 +121,24 @@ export default function FormBuilderPage() {
 
   return (
     <div className="space-y-6">
+      {/* Brand accent bar */}
+      <div className="-mx-6 -mt-6 mb-2 h-1 bg-gradient-to-r from-gcu-maroon via-gcu-red to-gcu-gold" />
+
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon-sm"
+          className="text-gcu-brown hover:text-gcu-maroon"
           onClick={() => navigate('/admin/forms')}
         >
           <ArrowLeft className="size-4" />
           <span className="sr-only">Back to forms</span>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isNew ? 'Create Form' : `Edit: ${form?.title ?? 'Form'}`}
+          <h1 className="text-2xl font-bold tracking-tight text-gcu-maroon-dark">
+            {isNew ? 'Create Form' : form?.title ?? 'Form'}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gcu-brown">
             {isNew
               ? 'Design a new data collection form'
               : `${fields.length} field${fields.length !== 1 ? 's' : ''} configured`}

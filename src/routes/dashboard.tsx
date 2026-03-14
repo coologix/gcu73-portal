@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import {
-  Loader2,
   FileText,
   Clock,
   AlertCircle,
@@ -85,30 +84,30 @@ export default function DashboardPage() {
           .order('updated_at', { ascending: false })
 
         if (subsError) throw new Error(subsError.message)
-
-        if (!subs || subs.length === 0) {
-          setSubmissions([])
-          return
-        }
+        const nextSubmissions = subs ?? []
 
         // Fetch related forms
-        const formIds = [...new Set(subs.map((s) => s.form_id))]
-        const { data: forms } = await supabase
-          .from('forms')
-          .select('*')
-          .in('id', formIds)
+        if (nextSubmissions.length > 0) {
+          const formIds = [...new Set(nextSubmissions.map((s) => s.form_id))]
+          const { data: forms } = await supabase
+            .from('forms')
+            .select('*')
+            .in('id', formIds)
 
-        const formMap = new Map(forms?.map((f) => [f.id, f]) ?? [])
+          const formMap = new Map(forms?.map((f) => [f.id, f]) ?? [])
 
-        const enriched: SubmissionWithForm[] = subs.map((s) => ({
-          ...s,
-          form: formMap.get(s.form_id) ?? null,
-        }))
+          const enriched: SubmissionWithForm[] = nextSubmissions.map((submission) => ({
+            ...submission,
+            form: formMap.get(submission.form_id) ?? null,
+          }))
 
-        setSubmissions(enriched)
+          setSubmissions(enriched)
+        } else {
+          setSubmissions([])
+        }
 
         // Also fetch pending invitations — exclude forms already submitted
-        const submittedFormIds = new Set(subs?.map(s => s.form_id) ?? [])
+        const submittedFormIds = new Set(nextSubmissions.map((submission) => submission.form_id))
         const { data: invites } = await supabase
           .from('invitations')
           .select('*')
@@ -308,7 +307,11 @@ export default function DashboardPage() {
                     className="cursor-pointer border-gcu-cream-dark/80 transition-all hover:shadow-md hover:shadow-gcu-maroon/5 hover:border-gcu-cream-dark"
                     onClick={() => {
                       if (submission.form) {
-                        navigate(`/form/${submission.form.slug}`)
+                        navigate(
+                          submission.status === 'submitted'
+                            ? `/submissions/${submission.id}`
+                            : `/form/${submission.form.slug}/submissions/${submission.id}/edit`,
+                        )
                       }
                     }}
                   >

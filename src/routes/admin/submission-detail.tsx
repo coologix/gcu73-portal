@@ -16,16 +16,18 @@ import { Separator } from '@/components/ui/separator'
 import type { Submission, SubmissionValue, FormField, Form } from '@/types/database'
 
 export default function SubmissionDetailPage() {
-  const { formId, submissionId } = useParams<{
+  const { formId, id } = useParams<{
     formId: string
-    submissionId: string
+    id: string
   }>()
+  const submissionId = id
   const navigate = useNavigate()
 
   const [submission, setSubmission] = useState<Submission | null>(null)
   const [values, setValues] = useState<SubmissionValue[]>([])
   const [fields, setFields] = useState<FormField[]>([])
   const [form, setForm] = useState<Form | null>(null)
+  const [submitterLabel, setSubmitterLabel] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -62,11 +64,21 @@ export default function SubmissionDetailPage() {
         setSubmission(subRes.data)
         setFields(fieldsRes.data ?? [])
         setValues(valuesRes.data ?? [])
+
+        const { data: submitterProfile } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', subRes.data.user_id)
+          .maybeSingle()
+
+        setSubmitterLabel(
+          submitterProfile?.full_name || submitterProfile?.email || subRes.data.user_id,
+        )
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : 'Failed to load submission',
         )
-        navigate(`/admin/submissions/${formId}`, { replace: true })
+        navigate(`/admin/forms/${formId}/submissions`, { replace: true })
       } finally {
         setIsLoading(false)
       }
@@ -115,9 +127,6 @@ export default function SubmissionDetailPage() {
     )
   }
 
-  // Build a map from field ID to field for easy lookup
-  const fieldMap = new Map(fields.map((f) => [f.id, f]))
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -125,7 +134,7 @@ export default function SubmissionDetailPage() {
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={() => navigate(`/admin/submissions/${formId}`)}
+          onClick={() => navigate(`/admin/forms/${formId}/submissions`)}
         >
           <ArrowLeft className="size-4" />
           <span className="sr-only">Back to submissions</span>
@@ -135,7 +144,7 @@ export default function SubmissionDetailPage() {
             Submission Detail
           </h1>
           <p className="text-sm text-muted-foreground">
-            {form?.title ?? 'Form'} &middot; {submission.submitted_by}
+            {form?.title ?? 'Form'} &middot; {submitterLabel || submission.user_id}
           </p>
         </div>
         <Badge
@@ -160,7 +169,7 @@ export default function SubmissionDetailPage() {
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Submitted By</dt>
-              <dd className="font-medium">{submission.submitted_by}</dd>
+              <dd className="font-medium">{submitterLabel || submission.user_id}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Status</dt>

@@ -11,28 +11,27 @@ interface UseWizardFormOptions {
   fields: FormField[]
   formId: string
   userEmail?: string
+  initialValues?: Record<string, string>
+  storageKey?: string
 }
 
-export function useWizardForm({ fields, formId, userEmail }: UseWizardFormOptions) {
+export function useWizardForm({
+  fields,
+  formId,
+  userEmail,
+  initialValues = {},
+  storageKey: customStorageKey,
+}: UseWizardFormOptions) {
   const [currentStep, setCurrentStep] = useState(0)
   const [direction, setDirection] = useState(0)
 
-  const storageKey = `${STORAGE_PREFIX}${formId}`
+  const storageKey = customStorageKey ?? `${STORAGE_PREFIX}${formId}`
 
   // Build the full Zod schema from all fields
   const schema = useMemo(() => buildFormSchema(fields), [fields])
 
   // Load persisted form data from localStorage
   const defaultValues = useMemo(() => {
-    const saved = localStorage.getItem(storageKey)
-    if (saved) {
-      try {
-        return JSON.parse(saved) as Record<string, string>
-      } catch {
-        // Corrupted data, ignore
-      }
-    }
-    // Initialize all fields — prefill email fields with user's email
     const defaults: Record<string, string> = {}
     for (const field of fields) {
       if (field.field_type === 'email' && userEmail) {
@@ -41,8 +40,20 @@ export function useWizardForm({ fields, formId, userEmail }: UseWizardFormOption
         defaults[field.id] = ''
       }
     }
+
+    Object.assign(defaults, initialValues)
+
+    const saved = localStorage.getItem(storageKey)
+    if (saved) {
+      try {
+        Object.assign(defaults, JSON.parse(saved) as Record<string, string>)
+      } catch {
+        // Corrupted data, ignore
+      }
+    }
+
     return defaults
-  }, [fields, storageKey, userEmail])
+  }, [fields, initialValues, storageKey, userEmail])
 
   const form = useForm<Record<string, string>>({
     resolver: zodResolver(schema) as Resolver<Record<string, string>>,

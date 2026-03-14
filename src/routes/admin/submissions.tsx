@@ -2,10 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import { toast } from 'sonner'
 import {
-  Loader2,
   ArrowLeft,
   Search,
-  Filter,
   FileText,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -16,9 +14,6 @@ import { Badge } from '@/components/ui/badge'
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
 } from '@/components/ui/card'
 import {
   Table,
@@ -30,6 +25,11 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Form, Submission } from '@/types/database'
+
+interface SubmissionListItem extends Submission {
+  submitterName: string
+  submitterEmail: string
+}
 
 type StatusFilter = 'all' | Submission['status']
 
@@ -45,7 +45,7 @@ export default function SubmissionsPage() {
   const navigate = useNavigate()
 
   const [form, setForm] = useState<Form | null>(null)
-  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [submissions, setSubmissions] = useState<SubmissionListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -74,7 +74,36 @@ export default function SubmissionsPage() {
           .order('created_at', { ascending: false })
 
         if (subsError) throw new Error(subsError.message)
-        setSubmissions(subs ?? [])
+
+        const nextSubmissions = subs ?? []
+        if (nextSubmissions.length === 0) {
+          setSubmissions([])
+          return
+        }
+
+        const submitterIds = [...new Set(nextSubmissions.map((submission) => submission.user_id))]
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', submitterIds)
+
+        if (profilesError) throw new Error(profilesError.message)
+
+        const profileMap = new Map(
+          (profiles ?? []).map((profile) => [profile.id, profile]),
+        )
+
+        setSubmissions(
+          nextSubmissions.map((submission) => {
+            const profile = profileMap.get(submission.user_id)
+            return {
+              ...submission,
+              submitterName:
+                profile?.full_name || profile?.email || submission.user_id,
+              submitterEmail: profile?.email ?? '',
+            }
+          }),
+        )
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : 'Failed to load submissions',
@@ -93,7 +122,8 @@ export default function SubmissionsPage() {
       statusFilter === 'all' || sub.status === statusFilter
     const matchesSearch =
       !search ||
-      sub.submitted_by.toLowerCase().includes(search.toLowerCase()) ||
+      sub.submitterName.toLowerCase().includes(search.toLowerCase()) ||
+      sub.submitterEmail.toLowerCase().includes(search.toLowerCase()) ||
       sub.id.toLowerCase().includes(search.toLowerCase())
     return matchesStatus && matchesSearch
   })
@@ -180,7 +210,14 @@ export default function SubmissionsPage() {
                 {filtered.map((sub) => (
                   <TableRow key={sub.id}>
                     <TableCell className="font-medium">
-                      {sub.submitted_by}
+                      <div>
+                        <p className="font-medium">{sub.submitterName}</p>
+                        {sub.submitterEmail && (
+                          <p className="text-xs text-muted-foreground">
+                            {sub.submitterEmail}
+                          </p>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -211,7 +248,7 @@ export default function SubmissionsPage() {
                       })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link to={`/admin/submissions/${formId}/${sub.id}`} className={cn(buttonVariants({ variant: "ghost", size: "xs" }))}>
+                      <Link to={`/admin/forms/${formId}/submissions/${sub.id}`} className={cn(buttonVariants({ variant: "ghost", size: "xs" }))}>
                           View
                       </Link>
                     </TableCell>

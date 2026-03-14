@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { Loader2, ArrowLeft, ShieldCheck, GraduationCap, Shield } from 'lucide-react'
@@ -14,11 +14,15 @@ const RESEND_COOLDOWN = 60
 export default function VerifyPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { verifyOtp, signInWithOtp } = useAuth()
+  const [searchParams] = useSearchParams()
+  const { verifyOtp, signInWithOtp, user, isAdmin, loading: authLoading } = useAuth()
 
-  const email = (location.state as { email?: string } | null)?.email ?? ''
+  const routeState = location.state as { email?: string; redirectTo?: string } | null
+  const email = searchParams.get('email') ?? routeState?.email ?? ''
   const redirectTo =
-    (location.state as { redirectTo?: string } | null)?.redirectTo ?? '/dashboard'
+    searchParams.get('redirectTo') ??
+    routeState?.redirectTo ??
+    (isAdmin ? '/admin' : '/dashboard')
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''))
   const [isLoading, setIsLoading] = useState(false)
@@ -27,10 +31,16 @@ export default function VerifyPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
-    if (!email) {
+    if (!authLoading && user) {
+      navigate(redirectTo, { replace: true })
+    }
+  }, [authLoading, isAdmin, navigate, redirectTo, user])
+
+  useEffect(() => {
+    if (!authLoading && !user && !email) {
       navigate('/login', { replace: true })
     }
-  }, [email, navigate])
+  }, [authLoading, email, navigate, user])
 
   useEffect(() => {
     if (cooldown <= 0) return

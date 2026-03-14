@@ -9,20 +9,33 @@ import { WizardProgress } from './WizardProgress'
 import { WizardStep } from './WizardStep'
 import { WizardNav } from './WizardNav'
 import { cn } from '@/lib/utils'
-import type { FormField as FormFieldType, SubmissionInsert, SubmissionValueInsert } from '@/types/database'
+import type {
+  FormField as FormFieldType,
+  SubmissionInsert,
+  SubmissionValueInsert,
+} from '@/types/database'
 
 interface FormWizardProps {
   formSlug: string
+  submissionId?: string
   onClose?: () => void
 }
 
-export function FormWizard({ formSlug, onClose }: FormWizardProps) {
-  const { form: formData, fields, loading, error } = useFormData(formSlug)
+export function FormWizard({ formSlug, submissionId, onClose }: FormWizardProps) {
+  const {
+    form: formData,
+    fields,
+    submission,
+    initialValues,
+    loading,
+    error,
+  } = useFormData(formSlug, { submissionId })
   const { user } = useAuth()
 
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const isEditing = !!submissionId
 
   // Lock body scroll on mount
   useEffect(() => {
@@ -34,7 +47,10 @@ export function FormWizard({ formSlug, onClose }: FormWizardProps) {
   }, [])
 
   // Wait for fields to be loaded before initialising the wizard hook
-  const hasFields = fields.length > 0 && formData !== null
+  const hasFields =
+    fields.length > 0 &&
+    formData !== null &&
+    (!submissionId || submission !== null)
 
   return (
     <div className="fixed inset-0 z-50 bg-background">
@@ -47,8 +63,13 @@ export function FormWizard({ formSlug, onClose }: FormWizardProps) {
         <WizardContent
           formId={formData.id}
           fields={fields}
-          userId={user?.id ?? ''}
           userEmail={user?.email ?? ''}
+          initialValues={initialValues}
+          storageKey={
+            submissionId
+              ? `gcu73_wizard_submission_${submissionId}`
+              : `gcu73_wizard_${formData.id}`
+          }
           isSubmitting={isSubmitting}
           submitError={submitError}
           onClose={onClose}
@@ -57,40 +78,73 @@ export function FormWizard({ formSlug, onClose }: FormWizardProps) {
             setSubmitError(null)
 
             try {
-              // 1. Create the submission record
-              const insertPayload: SubmissionInsert = {
-                form_id: formData.id,
-                user_id: user?.id ?? '',
-                submitted_by: user?.id ?? '',
-                status: 'submitted',
-                submitted_at: new Date().toISOString(),
+              const submittedAt = new Date().toISOString()
+              let activeSubmissionId = submission?.id
+
+              if (submission) {
+                const { error: submissionUpdateError } = await supabase
+                  .from('submissions')
+                  .update({
+                    status: 'submitted',
+                    submitted_at: submittedAt,
+                    submitted_by: user?.id ?? submission.submitted_by,
+                  })
+                  .eq('id', submission.id)
+
+                if (submissionUpdateError) {
+                  throw new Error(submissionUpdateError.message)
+                }
+              } else {
+                const insertPayload: SubmissionInsert = {
+                  form_id: formData.id,
+                  user_id: user?.id ?? '',
+                  submitted_by: user?.id ?? '',
+                  status: 'submitted',
+                  submitted_at: submittedAt,
+                }
+
+                const { data: nextSubmission, error: subError } = await supabase
+                  .from('submissions')
+                  .insert(insertPayload as never)
+                  .select('id')
+                  .single() as {
+                    data: { id: string } | null
+                    error: { message: string } | null
+                  }
+
+                if (subError) throw new Error(subError.message)
+                if (!nextSubmission) throw new Error('Failed to create submission')
+                activeSubmissionId = nextSubmission.id
               }
 
-              const { data: submission, error: subError } = await supabase
-                .from('submissions')
-                .insert(insertPayload as never)
-                .select('id')
-                .single() as { data: { id: string } | null; error: { message: string } | null }
+              if (!activeSubmissionId) {
+                throw new Error('Failed to determine submission record')
+              }
 
-              if (subError) throw new Error(subError.message)
-              if (!submission) throw new Error('Failed to create submission')
-
-              // 2. Insert all submission values
               const submissionValues: SubmissionValueInsert[] = fields.map(
                 (field) => ({
-                  submission_id: submission.id,
+                  submission_id: activeSubmissionId,
                   field_id: field.id,
                   value: String(values[field.id] ?? ''),
-                  file_url: field.field_type === 'media'
-                    ? String(values[field.id] ?? '')
-                    : null,
+                  file_url:
+                    field.field_type === 'media' && values[field.id]
+                      ? String(values[field.id] ?? '')
+                      : null,
                   file_name: null,
                 }),
               )
 
-              const { error: valuesError } = await supabase
-                .from('submission_values')
-                .insert(submissionValues as never) as { error: { message: string } | null }
+              const valuesQuery = submission
+                ? supabase
+                    .from('submission_values')
+                    .upsert(submissionValues as never, {
+                      onConflict: 'submission_id,field_id',
+                    })
+                : supabase.from('submission_values').insert(submissionValues as never)
+
+              const { error: valuesError } = await valuesQuery as {
+                error: { message: string } | null
+              }
 
               if (valuesError) throw new Error(valuesError.message)
 
@@ -108,17 +162,29 @@ export function FormWizard({ formSlug, onClose }: FormWizardProps) {
               }
 
               setSubmitted(true)
+              return true
             } catch (err) {
               setSubmitError(
                 err instanceof Error ? err.message : 'Submission failed',
               )
+              return false
             } finally {
               setIsSubmitting(false)
             }
           }}
         />
       )}
-      {submitted && <SuccessState onClose={onClose} />}
+      {submitted && (
+        <SuccessState
+          onClose={onClose}
+          title={isEditing ? 'Submission Updated' : 'Submission Complete'}
+          message={
+            isEditing
+              ? 'Your updated information has been saved successfully.'
+              : 'Your information has been submitted successfully. Thank you!'
+          }
+        />
+      )}
 
       {/* Close button */}
       {onClose && !submitted && (
@@ -149,23 +215,32 @@ export function FormWizard({ formSlug, onClose }: FormWizardProps) {
 interface WizardContentProps {
   formId: string
   fields: FormFieldType[]
-  userId: string
   userEmail: string
+  initialValues: Record<string, string>
+  storageKey: string
   isSubmitting: boolean
   submitError: string | null
   onClose?: () => void
-  onSubmit: (values: Record<string, string>) => Promise<void>
+  onSubmit: (values: Record<string, string>) => Promise<boolean>
 }
 
 function WizardContent({
   formId,
   fields,
   userEmail,
+  initialValues,
+  storageKey,
   isSubmitting,
   submitError,
   onSubmit,
 }: WizardContentProps) {
-  const wizard = useWizardForm({ fields, formId, userEmail })
+  const wizard = useWizardForm({
+    fields,
+    formId,
+    userEmail,
+    initialValues,
+    storageKey,
+  })
 
   const {
     form,
@@ -184,8 +259,10 @@ function WizardContent({
   // Handle form submission
   const onFormSubmit = useCallback(
     async (values: Record<string, string>) => {
-      await onSubmit(values)
-      clearPersistedData()
+      const didSave = await onSubmit(values)
+      if (didSave) {
+        clearPersistedData()
+      }
     },
     [onSubmit, clearPersistedData],
   )
@@ -345,7 +422,15 @@ function ErrorState({
 
 // ── Success state ──────────────────────────────────────────
 
-function SuccessState({ onClose }: { onClose?: () => void }) {
+function SuccessState({
+  onClose,
+  title,
+  message,
+}: {
+  onClose?: () => void
+  title: string
+  message: string
+}) {
   return (
     <div className="flex h-[100dvh] items-center justify-center px-6">
       <motion.div
@@ -361,10 +446,8 @@ function SuccessState({ onClose }: { onClose?: () => void }) {
         >
           <CheckCircle2 className="size-16 text-green-500" />
         </motion.div>
-        <h2 className="text-2xl font-semibold">Submission Complete</h2>
-        <p className="text-muted-foreground">
-          Your information has been submitted successfully. Thank you!
-        </p>
+        <h2 className="text-2xl font-semibold">{title}</h2>
+        <p className="text-muted-foreground">{message}</p>
         {onClose && (
           <button
             type="button"

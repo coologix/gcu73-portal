@@ -1,6 +1,8 @@
-import { useNavigate } from "react-router";
+import { useCallback, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/lib/auth";
 import { GraduationCap, LayoutDashboard, User, LogOut } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,8 +24,46 @@ interface PortalHeaderProps {
 }
 
 export function PortalHeader({ leading, className }: PortalHeaderProps) {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const { count } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("recipient_id", user.id)
+      .eq("is_read", false);
+
+    setUnreadCount(count ?? 0);
+  }, [user]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchUnreadCount();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [fetchUnreadCount, location.pathname]);
+
+  useEffect(() => {
+    function handleNotificationsChanged() {
+      void fetchUnreadCount();
+    }
+
+    window.addEventListener("gcu73:notifications-updated", handleNotificationsChanged);
+    return () => {
+      window.removeEventListener("gcu73:notifications-updated", handleNotificationsChanged);
+    };
+  }, [fetchUnreadCount]);
 
   const initials = profile?.full_name
     ? profile.full_name
@@ -65,7 +105,7 @@ export function PortalHeader({ leading, className }: PortalHeaderProps) {
       {/* Right side */}
       <div className="flex items-center gap-1">
         <NotificationBell
-          count={0}
+          count={unreadCount}
           onClick={() => navigate("/notifications")}
         />
 

@@ -1,7 +1,9 @@
-import { Link } from 'react-router'
+import { Link, Navigate } from 'react-router'
 import { motion } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { Loader2 } from 'lucide-react'
+import { useAuth } from '@/lib/auth'
 import {
   GraduationCap,
   Shield,
@@ -59,6 +61,20 @@ const notableAlumni = [
 ]
 
 export default function HomePage() {
+  const { user, isAdmin, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (user) {
+    return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* ── Thin brand accent bar ──────────────────────── */}

@@ -86,6 +86,14 @@ export default function ExportPage() {
         return
       }
 
+      const submitterIds = [...new Set(submissions.map((submission) => submission.user_id))]
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', submitterIds)
+
+      if (profilesError) throw new Error(profilesError.message)
+
       // Fetch all submission values
       const subIds = submissions.map((s) => s.id)
       const { data: values, error: valsError } = await supabase
@@ -98,15 +106,19 @@ export default function ExportPage() {
       // Build export data
       const fieldLabels = (fields ?? []).map((f) => f.label)
       const fieldIds = (fields ?? []).map((f) => f.id)
+      const profileMap = new Map(
+        (profiles ?? []).map((profile) => [profile.id, profile]),
+      )
 
       const rows = submissions.map((sub) => {
         const subValues = (values ?? []).filter(
           (v) => v.submission_id === sub.id,
         )
         const valueMap = new Map(subValues.map((v) => [v.field_id, v]))
+        const submitter = profileMap.get(sub.user_id)
 
         const row: Record<string, string> = {
-          'Submitted By': sub.submitted_by,
+          'Submitted By': submitter?.full_name || submitter?.email || sub.user_id,
           'Submitted At': sub.submitted_at ?? '',
         }
 

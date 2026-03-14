@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useContext,
@@ -9,7 +10,7 @@ import {
 } from 'react'
 import type { ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
-import type { Profile } from '@/types/database'
+import type { Profile, ProfileUpdate } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 
 interface AuthContextValue {
@@ -20,6 +21,8 @@ interface AuthContextValue {
   signInWithOtp: (email: string) => Promise<{ error: Error | null }>
   verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
+  updateProfile: (updates: ProfileUpdate) => Promise<{ error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -129,11 +132,62 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setProfile(null)
   }, [])
 
+  const refreshProfile = useCallback(async () => {
+    if (!user) return
+    const nextProfile = await fetchProfile(user.id)
+    if (nextProfile) {
+      setProfile(nextProfile)
+    }
+  }, [fetchProfile, user])
+
+  const updateProfile = useCallback(
+    async (updates: ProfileUpdate) => {
+      if (!user) {
+        return { error: new Error('Not signed in') }
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        return { error: new Error(error?.message ?? 'Failed to update profile') }
+      }
+
+      setProfile(data)
+      return { error: null }
+    },
+    [user],
+  )
+
   const isAdmin = profile?.role === 'admin'
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, profile, isAdmin, loading, signInWithOtp, verifyOtp, signOut }),
-    [user, profile, isAdmin, loading, signInWithOtp, verifyOtp, signOut],
+    () => ({
+      user,
+      profile,
+      isAdmin,
+      loading,
+      signInWithOtp,
+      verifyOtp,
+      signOut,
+      refreshProfile,
+      updateProfile,
+    }),
+    [
+      user,
+      profile,
+      isAdmin,
+      loading,
+      signInWithOtp,
+      verifyOtp,
+      signOut,
+      refreshProfile,
+      updateProfile,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

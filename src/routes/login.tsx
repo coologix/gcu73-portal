@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { Loader2, Mail, ArrowLeft, GraduationCap, Shield, ArrowRight } from 'lucide-react'
@@ -11,9 +11,21 @@ import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { signInWithOtp } = useAuth()
+  const { signInWithOtp, user, isAdmin, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (user) {
+    return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -30,7 +42,7 @@ export default function LoginPage() {
         return
       }
       toast.success('OTP sent! Check your email.')
-      navigate('/verify', { state: { email: trimmed } })
+      navigate(`/verify?email=${encodeURIComponent(trimmed)}`)
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {

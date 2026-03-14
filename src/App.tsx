@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router'
+import { Routes, Route, Navigate, useParams } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { AuthProvider } from '@/lib/auth'
+import { AuthProvider, useAuth } from '@/lib/auth'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { AdminGuard } from '@/components/auth/AdminGuard'
 import { PortalLayout } from '@/components/layout/PortalLayout'
@@ -16,6 +16,9 @@ const VerifyPage = lazy(() => import('@/routes/verify'))
 const InvitePage = lazy(() => import('@/routes/invite'))
 const FormPage = lazy(() => import('@/routes/form/[slug]'))
 const DashboardPage = lazy(() => import('@/routes/dashboard'))
+const NotificationsPage = lazy(() => import('@/routes/notifications'))
+const ProfilePage = lazy(() => import('@/routes/profile'))
+const SubmissionDetailPage = lazy(() => import('@/routes/submission-detail'))
 const AdminDashboardPage = lazy(() => import('@/routes/admin/index'))
 const AdminFormsPage = lazy(() => import('@/routes/admin/forms'))
 const AdminFormBuilderPage = lazy(() => import('@/routes/admin/form-builder'))
@@ -34,6 +37,30 @@ function PageLoader() {
   )
 }
 
+function getSignedInHome(isAdmin: boolean): string {
+  return isAdmin ? '/admin' : '/dashboard'
+}
+
+function AuthAwareFallbackRedirect() {
+  const { user, isAdmin, loading } = useAuth()
+
+  if (loading) {
+    return <PageLoader />
+  }
+
+  return <Navigate to={user ? getSignedInHome(isAdmin) : '/'} replace />
+}
+
+function LegacyAdminSubmissionRedirect() {
+  const { formId, id } = useParams<{ formId: string; id: string }>()
+
+  if (!formId || !id) {
+    return <AuthAwareFallbackRedirect />
+  }
+
+  return <Navigate to={`/admin/forms/${formId}/submissions/${id}`} replace />
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -49,11 +76,15 @@ function App() {
             {/* Protected - User */}
             <Route element={<AuthGuard><PortalLayout /></AuthGuard>}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/submissions/:submissionId" element={<SubmissionDetailPage />} />
             </Route>
 
             {/* Full-screen form wizard (no layout wrapper) */}
             <Route element={<AuthGuard />}>
               <Route path="/form/:slug" element={<FormPage />} />
+              <Route path="/form/:slug/submissions/:submissionId/edit" element={<FormPage />} />
             </Route>
 
             {/* Protected - Admin */}
@@ -69,7 +100,8 @@ function App() {
               <Route path="/admin/export" element={<AdminExportPage />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/admin/submissions/:formId/:id" element={<LegacyAdminSubmissionRedirect />} />
+            <Route path="*" element={<AuthAwareFallbackRedirect />} />
           </Routes>
         </Suspense>
         <Toaster richColors position="top-right" />

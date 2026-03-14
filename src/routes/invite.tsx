@@ -85,12 +85,6 @@ export default function InvitePage() {
 
         // If user is already logged in and matches the invitation email, redirect
         if (user?.email?.toLowerCase() === data.email.toLowerCase() && formData) {
-          // Mark invitation as completed
-          await supabase
-            .from('invitations')
-            .update({ status: 'completed', completed_at: new Date().toISOString() })
-            .eq('id', data.id)
-
           navigate(`/form/${formData.slug}`, { replace: true })
         }
       } catch {
@@ -118,12 +112,11 @@ export default function InvitePage() {
       setStatus('otp_sent')
 
       // Navigate to verify with invitation context
-      navigate('/verify', {
-        state: {
-          email: invitation.email,
-          redirectTo: form ? `/form/${form.slug}` : '/dashboard',
-        },
+      const params = new URLSearchParams({
+        email: invitation.email,
+        redirectTo: form ? `/form/${form.slug}` : '/dashboard',
       })
+      navigate(`/verify?${params.toString()}`)
     } catch {
       toast.error('Failed to send OTP. Please try again.')
     } finally {

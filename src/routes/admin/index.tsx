@@ -10,11 +10,9 @@ import {
   ArrowRight,
   Download,
   Send,
-  Loader2,
   Inbox,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   Card,
@@ -50,7 +48,8 @@ interface DashboardStats {
 
 interface RecentSubmission {
   id: string
-  submitted_by: string
+  user_id: string
+  submitter_name: string
   status: string
   created_at: string
   form_title: string
@@ -98,23 +97,33 @@ export default function AdminDashboardPage() {
         // Fetch recent submissions with form titles
         const { data: recent } = await supabase
           .from('submissions')
-          .select('id, submitted_by, status, created_at, form_id')
+          .select('id, user_id, status, created_at, form_id')
           .order('created_at', { ascending: false })
           .limit(5)
 
         if (recent && recent.length > 0) {
           const formIds = [...new Set(recent.map((r) => r.form_id))]
+          const submitterIds = [...new Set(recent.map((r) => r.user_id))]
           const { data: forms } = await supabase
             .from('forms')
             .select('id, title')
             .in('id', formIds)
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', submitterIds)
 
           const formMap = new Map(forms?.map((f) => [f.id, f.title]) ?? [])
+          const profileMap = new Map(profiles?.map((profile) => [profile.id, profile]) ?? [])
 
           setRecentSubmissions(
             recent.map((r) => ({
               id: r.id,
-              submitted_by: r.submitted_by,
+              user_id: r.user_id,
+              submitter_name:
+                profileMap.get(r.user_id)?.full_name ||
+                profileMap.get(r.user_id)?.email ||
+                r.user_id,
               status: r.status,
               created_at: r.created_at,
               form_title: formMap.get(r.form_id) ?? 'Unknown Form',
@@ -338,7 +347,7 @@ export default function AdminDashboardPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-gcu-maroon-dark">
-                          {sub.submitted_by}
+                          {sub.submitter_name}
                         </p>
                         <p className="text-xs text-gcu-brown">
                           {sub.form_title} &middot;{' '}

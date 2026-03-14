@@ -27,6 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { BulkCsvUpload } from '@/components/admin/BulkCsvUpload'
+import { sendSingleInvitation } from '@/lib/admin-invitations'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import type { Form, Invitation } from '@/types/database'
@@ -167,50 +168,29 @@ export function InvitationManager({
     if (!email || !selectedFormId) return
     setSendingSingle(true)
     try {
-      // Check for existing pending invitation
-      const { data: existing } = await supabase
-        .from('invitations')
-        .select('id, status')
-        .eq('email', email)
-        .eq('form_id', selectedFormId)
-        .eq('status', 'pending')
-        .limit(1)
-
-      if (existing && existing.length > 0) {
-        toast.warning(`An invitation is already pending for ${email}`)
-        setSendingSingle(false)
-        return
-      }
-
-      const token = crypto.randomUUID()
-      const { error } = await supabase.from('invitations').insert({
-        email,
-        form_id: selectedFormId,
-        token,
-        invited_by: currentUserId,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      })
-      if (error) throw error
-
-      // Send invitation email via edge function
       const formTitle = forms.find(f => f.id === selectedFormId)?.title ?? ''
-      const { error: fnError } = await supabase.functions.invoke('send-invitation-email', {
-        body: { email, token, formTitle },
+      const result = await sendSingleInvitation({
+        email,
+        formId: selectedFormId,
+        formTitle,
+        currentUserId,
       })
 
-      const inviteLink = `${window.location.origin}/invite?token=${token}`
-      if (fnError) {
-        // Email failed but invitation was created — show link to share manually
+      if (result.status === 'duplicate') {
+        toast.warning(`An invitation is already pending for ${result.email}`)
+      } else if (!result.emailSent) {
         toast.success(
-          `Invitation created for ${email}`,
-          { description: `Email could not be sent. Share this link: ${inviteLink}` },
+          `Invitation created for ${result.email}`,
+          { description: `Email could not be sent. Share this link: ${result.inviteLink}` },
         )
       } else {
-        toast.success(`Invitation email sent to ${email}`)
+        toast.success(`Invitation email sent to ${result.email}`)
       }
 
-      setSingleEmail('')
-      void fetchInvitations()
+      if (result.status === 'sent') {
+        setSingleEmail('')
+        void fetchInvitations()
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to send invitation')
     } finally {

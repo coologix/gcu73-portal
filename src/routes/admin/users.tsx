@@ -555,8 +555,7 @@ export default function UsersPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>User</TableHead>
-                          <TableHead className="hidden sm:table-cell">Email</TableHead>
+                          <TableHead>Email</TableHead>
                           <TableHead className="hidden sm:table-cell">Joined</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -566,33 +565,10 @@ export default function UsersPage() {
                           const isSelf = profile.id === currentUser?.id
                           return (
                             <TableRow key={profile.id} className="transition-colors hover:bg-gcu-cream/50">
-                              <TableCell>
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="size-8">
-                                    <AvatarImage
-                                      src={profile.avatar_url ?? undefined}
-                                      alt={profile.full_name ?? profile.email}
-                                    />
-                                    <AvatarFallback className="text-xs bg-gcu-cream-dark text-gcu-maroon">
-                                      {profile.full_name
-                                        ? getInitials(profile.full_name)
-                                        : getEmailInitials(profile.email)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="min-w-0">
-                                    <p className="truncate font-medium text-gcu-maroon-dark">
-                                      {profile.full_name ?? 'No name provided'}
-                                    </p>
-                                    <p className="text-xs text-gcu-brown">
-                                      {profile.full_name
-                                        ? 'Profile name captured for this member'
-                                        : 'Email-only signup'}
-                                    </p>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell text-gcu-brown">
-                                {profile.email}
+                              <TableCell className="max-w-[280px]">
+                                <p className="truncate font-medium text-gcu-maroon-dark">
+                                  {profile.email}
+                                </p>
                               </TableCell>
                               <TableCell className="hidden sm:table-cell text-gcu-brown">
                                 {formatJoinedDate(profile.created_at)}

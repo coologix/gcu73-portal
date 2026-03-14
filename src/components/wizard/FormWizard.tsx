@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, AlertCircle, X } from 'lucide-react'
 import { useFormData } from '@/hooks/use-form-data'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { completeInvitationForCurrentUser } from '@/lib/invitations'
 import { useWizardForm } from './use-wizard-form'
 import { WizardProgress } from './WizardProgress'
 import { WizardStep } from './WizardStep'
@@ -18,10 +19,16 @@ import type {
 interface FormWizardProps {
   formSlug: string
   submissionId?: string
+  invitationToken?: string | null
   onClose?: () => void
 }
 
-export function FormWizard({ formSlug, submissionId, onClose }: FormWizardProps) {
+export function FormWizard({
+  formSlug,
+  submissionId,
+  invitationToken,
+  onClose,
+}: FormWizardProps) {
   const {
     form: formData,
     fields,
@@ -148,17 +155,20 @@ export function FormWizard({ formSlug, submissionId, onClose }: FormWizardProps)
 
               if (valuesError) throw new Error(valuesError.message)
 
-              // 3. Mark any pending invitations for this user+form as completed
+              // Best-effort invitation reconciliation after a successful save.
               if (user?.email) {
-                await supabase
-                  .from('invitations')
-                  .update({
-                    status: 'completed' as const,
-                    completed_at: new Date().toISOString(),
+                const { error: invitationError } =
+                  await completeInvitationForCurrentUser({
+                    formId: formData.id,
+                    token: invitationToken,
                   })
-                  .eq('email', user.email)
-                  .eq('form_id', formData.id)
-                  .eq('status', 'pending')
+
+                if (invitationError) {
+                  console.warn(
+                    'Failed to reconcile invitation completion:',
+                    invitationError.message,
+                  )
+                }
               }
 
               setSubmitted(true)

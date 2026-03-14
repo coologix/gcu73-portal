@@ -205,7 +205,7 @@ export default function DashboardPage() {
               {pendingInvitations.map((inv) => (
                 <Link
                   key={inv.id}
-                  to={`/form/${inv.form?.slug ?? ''}`}
+                  to={`/form/${inv.form?.slug ?? ''}?inviteToken=${inv.token}`}
                   className="flex items-center justify-between rounded-lg border border-gcu-gold/30 bg-gcu-cream-dark p-4 transition-all hover:shadow-md hover:shadow-gcu-maroon/5"
                 >
                   <div className="flex items-center gap-3">

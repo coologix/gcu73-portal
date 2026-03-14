@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router'
+import { useParams, useNavigate, useSearchParams } from 'react-router'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { FormWizard } from '@/components/wizard/FormWizard'
 import { useAuth } from '@/lib/auth'
+import { completeInvitationForCurrentUser } from '@/lib/invitations'
 import { supabase } from '@/lib/supabase'
 
 export default function FormPage() {
@@ -10,10 +11,12 @@ export default function FormPage() {
     slug: string
     submissionId: string
   }>()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [routeStatus, setRouteStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
+  const invitationToken = searchParams.get('inviteToken')
 
   useEffect(() => {
     if (!slug || !user) return
@@ -52,6 +55,21 @@ export default function FormPage() {
           }
 
           if (existingSubmission.status === 'submitted') {
+            if (invitationToken) {
+              const { error: invitationError } =
+                await completeInvitationForCurrentUser({
+                  formId: formData.id,
+                  token: invitationToken,
+                })
+
+              if (invitationError) {
+                console.warn(
+                  'Failed to reconcile invitation completion:',
+                  invitationError.message,
+                )
+              }
+            }
+
             navigate(`/submissions/${existingSubmission.id}`, { replace: true })
             return
           }
@@ -74,6 +92,21 @@ export default function FormPage() {
         }
 
         if (currentSubmission) {
+          if (currentSubmission.status === 'submitted' && invitationToken) {
+            const { error: invitationError } =
+              await completeInvitationForCurrentUser({
+                formId: formData.id,
+                token: invitationToken,
+              })
+
+            if (invitationError) {
+              console.warn(
+                'Failed to reconcile invitation completion:',
+                invitationError.message,
+              )
+            }
+          }
+
           const target =
             currentSubmission.status === 'submitted'
               ? `/submissions/${currentSubmission.id}`
@@ -99,7 +132,7 @@ export default function FormPage() {
     return () => {
       cancelled = true
     }
-  }, [navigate, slug, submissionId, user])
+  }, [invitationToken, navigate, slug, submissionId, user])
 
   if (!slug) {
     return (
@@ -135,6 +168,7 @@ export default function FormPage() {
     <FormWizard
       formSlug={slug}
       submissionId={submissionId}
+      invitationToken={invitationToken}
       onClose={() => navigate(submissionId ? `/submissions/${submissionId}` : '/dashboard')}
     />
   )

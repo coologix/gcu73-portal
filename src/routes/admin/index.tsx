@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
@@ -13,7 +13,9 @@ import {
   Inbox,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
+import { QuickInviteDialog } from '@/components/admin/QuickInviteDialog'
 import {
   Card,
   CardContent,
@@ -23,6 +25,7 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import type { Form } from '@/types/database'
 
 // ── Animation helpers ────────────────────────────────────────
 
@@ -57,106 +60,117 @@ interface RecentSubmission {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentSubmissions, setRecentSubmissions] = useState<RecentSubmission[]>([])
+  const [forms, setForms] = useState<Form[]>([])
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    async function fetchDashboardData() {
-      setIsLoading(true)
-      try {
-        // Fetch stats in parallel
-        const [profilesRes, submissionsRes, invitationsRes] = await Promise.all([
-          supabase.from('profiles').select('id, role'),
-          supabase.from('submissions').select('id, user_id, status', { count: 'exact' }),
-          supabase
-            .from('invitations')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'pending'),
-        ])
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const [profilesRes, submissionsRes, invitationsRes, formsRes] = await Promise.all([
+        supabase.from('profiles').select('id, role'),
+        supabase.from('submissions').select('id, user_id, status', { count: 'exact' }),
+        supabase
+          .from('invitations')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+        supabase
+          .from('forms')
+          .select('*')
+          .eq('is_active', true)
+          .order('title', { ascending: true }),
+      ])
 
-        if (profilesRes.error) throw new Error(profilesRes.error.message)
-        if (submissionsRes.error) throw new Error(submissionsRes.error.message)
-        if (invitationsRes.error) throw new Error(invitationsRes.error.message)
+      if (profilesRes.error) throw new Error(profilesRes.error.message)
+      if (submissionsRes.error) throw new Error(submissionsRes.error.message)
+      if (invitationsRes.error) throw new Error(invitationsRes.error.message)
+      if (formsRes.error) throw new Error(formsRes.error.message)
 
-        const submittedUserIds = new Set(
-          submissionsRes.data
-            ?.filter((submission) => submission.status === 'submitted')
-            .map((submission) => submission.user_id) ?? [],
+      setForms(formsRes.data ?? [])
+
+      const submittedUserIds = new Set(
+        submissionsRes.data
+          ?.filter((submission) => submission.status === 'submitted')
+          .map((submission) => submission.user_id) ?? [],
+      )
+
+      const eligibleMembers =
+        profilesRes.data?.filter(
+          (profile) => profile.role !== 'admin' || submittedUserIds.has(profile.id),
+        ) ?? []
+
+      const totalMembers = eligibleMembers.length
+      const totalSubmissions = submissionsRes.count ?? 0
+      const pendingInvitations = invitationsRes.count ?? 0
+
+      const completedMemberCount = eligibleMembers.filter((profile) =>
+        submittedUserIds.has(profile.id),
+      ).length
+
+      const completionRate =
+        totalMembers > 0
+          ? Math.round((completedMemberCount / totalMembers) * 100)
+          : 0
+
+      setStats({
+        totalMembers,
+        totalSubmissions,
+        pendingInvitations,
+        completionRate,
+      })
+
+      const { data: recent } = await supabase
+        .from('submissions')
+        .select('id, user_id, status, created_at, form_id')
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (recent && recent.length > 0) {
+        const formIds = [...new Set(recent.map((r) => r.form_id))]
+        const submitterIds = [...new Set(recent.map((r) => r.user_id))]
+        const { data: recentForms } = await supabase
+          .from('forms')
+          .select('id, title')
+          .in('id', formIds)
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', submitterIds)
+
+        const formMap = new Map(recentForms?.map((f) => [f.id, f.title]) ?? [])
+        const profileMap = new Map(profiles?.map((profile) => [profile.id, profile]) ?? [])
+
+        setRecentSubmissions(
+          recent.map((r) => ({
+            id: r.id,
+            user_id: r.user_id,
+            submitter_name:
+              profileMap.get(r.user_id)?.full_name ||
+              profileMap.get(r.user_id)?.email ||
+              r.user_id,
+            status: r.status,
+            created_at: r.created_at,
+            form_title: formMap.get(r.form_id) ?? 'Unknown Form',
+          })),
         )
-
-        const eligibleMembers =
-          profilesRes.data?.filter(
-            (profile) => profile.role !== 'admin' || submittedUserIds.has(profile.id),
-          ) ?? []
-
-        const totalMembers = eligibleMembers.length
-        const totalSubmissions = submissionsRes.count ?? 0
-        const pendingInvitations = invitationsRes.count ?? 0
-
-        const completedMemberCount = eligibleMembers.filter((profile) =>
-          submittedUserIds.has(profile.id),
-        ).length
-
-        const completionRate =
-          totalMembers > 0
-            ? Math.round((completedMemberCount / totalMembers) * 100)
-            : 0
-
-        setStats({
-          totalMembers,
-          totalSubmissions,
-          pendingInvitations,
-          completionRate,
-        })
-
-        // Fetch recent submissions with form titles
-        const { data: recent } = await supabase
-          .from('submissions')
-          .select('id, user_id, status, created_at, form_id')
-          .order('created_at', { ascending: false })
-          .limit(5)
-
-        if (recent && recent.length > 0) {
-          const formIds = [...new Set(recent.map((r) => r.form_id))]
-          const submitterIds = [...new Set(recent.map((r) => r.user_id))]
-          const { data: forms } = await supabase
-            .from('forms')
-            .select('id, title')
-            .in('id', formIds)
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, full_name, email')
-            .in('id', submitterIds)
-
-          const formMap = new Map(forms?.map((f) => [f.id, f.title]) ?? [])
-          const profileMap = new Map(profiles?.map((profile) => [profile.id, profile]) ?? [])
-
-          setRecentSubmissions(
-            recent.map((r) => ({
-              id: r.id,
-              user_id: r.user_id,
-              submitter_name:
-                profileMap.get(r.user_id)?.full_name ||
-                profileMap.get(r.user_id)?.email ||
-                r.user_id,
-              status: r.status,
-              created_at: r.created_at,
-              form_title: formMap.get(r.form_id) ?? 'Unknown Form',
-            })),
-          )
-        }
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : 'Failed to load dashboard data',
-        )
-      } finally {
-        setIsLoading(false)
+      } else {
+        setRecentSubmissions([])
       }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to load dashboard data',
+      )
+    } finally {
+      setIsLoading(false)
     }
-
-    void fetchDashboardData()
   }, [])
+
+  useEffect(() => {
+    void fetchDashboardData()
+  }, [fetchDashboardData])
 
   const statCards = stats
     ? [
@@ -207,10 +221,12 @@ export default function AdminDashboardPage() {
       description: 'Review status, resend links, and track invitation history',
     },
     {
-      href: '/admin/invitations?tab=single',
+      href: null,
+      onClick: () => setIsInviteDialogOpen(true),
       icon: Send,
       title: 'Invite One Member',
-      description: 'Open the single-invite flow for a selected form',
+      description: 'Open a quick-send modal without leaving the dashboard',
+      disabled: !user || forms.length === 0,
     },
     {
       href: '/admin/forms',
@@ -228,6 +244,18 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
+      {user && (
+        <QuickInviteDialog
+          open={isInviteDialogOpen}
+          onOpenChange={setIsInviteDialogOpen}
+          forms={forms}
+          currentUserId={user.id}
+          onInviteSent={() => {
+            void fetchDashboardData()
+          }}
+        />
+      )}
+
       {/* Brand accent bar */}
       <div className="-mx-6 -mt-6 mb-2 h-1 bg-gradient-to-r from-gcu-maroon via-gcu-red to-gcu-gold" />
 
@@ -303,11 +331,41 @@ export default function AdminDashboardPage() {
             <CardContent className="space-y-3">
               {quickActions.map((action) => {
                 const ActionIcon = action.icon
+                const cardClassName = cn(
+                  'group flex items-start gap-3 rounded-lg border border-gcu-cream-dark bg-white p-3 text-left transition-all hover:border-gcu-cream-dark hover:bg-gcu-cream/50 hover:shadow-sm',
+                  action.disabled && 'cursor-not-allowed opacity-50 hover:bg-white hover:shadow-none',
+                )
+
+                if (action.href) {
+                  return (
+                    <Link
+                      key={action.title}
+                      to={action.href}
+                      className={cardClassName}
+                    >
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gcu-cream-dark text-gcu-maroon transition-colors group-hover:bg-gcu-maroon group-hover:text-white">
+                        <ActionIcon className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gcu-maroon-dark">
+                          {action.title}
+                        </p>
+                        <p className="mt-0.5 text-xs text-gcu-brown">
+                          {action.description}
+                        </p>
+                      </div>
+                      <ArrowRight className="mt-0.5 size-4 shrink-0 text-gcu-brown/40 transition-transform group-hover:translate-x-0.5 group-hover:text-gcu-maroon" />
+                    </Link>
+                  )
+                }
+
                 return (
-                  <Link
-                    key={action.href}
-                    to={action.href}
-                    className="group flex items-start gap-3 rounded-lg border border-gcu-cream-dark bg-white p-3 transition-all hover:border-gcu-cream-dark hover:bg-gcu-cream/50 hover:shadow-sm"
+                  <button
+                    key={action.title}
+                    type="button"
+                    className={cardClassName}
+                    onClick={action.onClick}
+                    disabled={action.disabled}
                   >
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gcu-cream-dark text-gcu-maroon transition-colors group-hover:bg-gcu-maroon group-hover:text-white">
                       <ActionIcon className="size-4" />
@@ -319,9 +377,14 @@ export default function AdminDashboardPage() {
                       <p className="mt-0.5 text-xs text-gcu-brown">
                         {action.description}
                       </p>
+                      {action.disabled && (
+                        <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.16em] text-gcu-brown/70">
+                          No active forms
+                        </p>
+                      )}
                     </div>
                     <ArrowRight className="mt-0.5 size-4 shrink-0 text-gcu-brown/40 transition-transform group-hover:translate-x-0.5 group-hover:text-gcu-maroon" />
-                  </Link>
+                  </button>
                 )
               })}
             </CardContent>

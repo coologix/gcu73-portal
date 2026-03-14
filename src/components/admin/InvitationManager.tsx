@@ -126,7 +126,7 @@ export function InvitationManager({
       // Send invitation email via edge function
       const formTitle = forms.find(f => f.id === selectedFormId)?.title ?? ''
       const { error: fnError } = await supabase.functions.invoke('send-invitation-email', {
-        body: { email, token, formTitle, callerUserId: currentUserId },
+        body: { email, token, formTitle },
       })
 
       const inviteLink = `${window.location.origin}/invite?token=${token}`

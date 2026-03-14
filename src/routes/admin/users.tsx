@@ -108,6 +108,45 @@ export default function UsersPage() {
     void fetchProfiles()
   }, [])
 
+  async function invokeManageAdminAccount(
+    body:
+      | {
+          action: 'invite_admin'
+          email: string
+          fullName?: string | null
+        }
+      | {
+          action: 'set_role'
+          userId: string
+          role: Profile['role']
+        },
+  ) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session?.access_token) {
+      throw new Error('Your session has expired. Please sign in again.')
+    }
+
+    const { data, error } = await supabase.functions.invoke('manage-admin-account', {
+      body,
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (data?.error) {
+      throw new Error(data.error)
+    }
+
+    return data
+  }
+
   async function handleCreateAdmin() {
     const email = newAdminEmail.trim().toLowerCase()
     const fullName = newAdminName.trim()
@@ -119,21 +158,11 @@ export default function UsersPage() {
 
     setIsCreatingAdmin(true)
     try {
-      const { data, error } = await supabase.functions.invoke('manage-admin-account', {
-        body: {
-          action: 'invite_admin',
-          email,
-          fullName: fullName || null,
-        },
+      const data = await invokeManageAdminAccount({
+        action: 'invite_admin',
+        email,
+        fullName: fullName || null,
       })
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      if (data?.error) {
-        throw new Error(data.error)
-      }
 
       toast.success(
         data?.message ?? `Admin access created for ${email}`,
@@ -158,21 +187,11 @@ export default function UsersPage() {
 
     setRoleChangeTargetId(profile.id)
     try {
-      const { data, error } = await supabase.functions.invoke('manage-admin-account', {
-        body: {
-          action: 'set_role',
-          userId: profile.id,
-          role: nextRole,
-        },
+      const data = await invokeManageAdminAccount({
+        action: 'set_role',
+        userId: profile.id,
+        role: nextRole,
       })
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      if (data?.error) {
-        throw new Error(data.error)
-      }
 
       setProfiles((prev) =>
         prev.map((item) =>
@@ -643,9 +662,10 @@ export default function UsersPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               onClick={handleDeleteUser}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-white hover:bg-destructive/90"
             >
               {isDeleting ? (
                 <>

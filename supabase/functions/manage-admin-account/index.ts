@@ -36,20 +36,25 @@ Deno.serve(async (req) => {
     const siteUrl = Deno.env.get("SITE_URL") || "https://gcu73-portal.vercel.app";
 
     const authHeader = req.headers.get("Authorization") ?? "";
-    const jwt = authHeader.replace("Bearer ", "");
-    if (!jwt) return json({ error: "Missing authorization" }, 401);
+    if (!authHeader) return json({ error: "Missing authorization" }, 401);
 
-    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        "Authorization": `Bearer ${jwt}`,
-        "apikey": serviceRoleKey,
+    const callerClient = createClient(supabaseUrl, anonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
       },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    if (!userRes.ok) return json({ error: "Unauthorized" }, 401);
+    const {
+      data: { user: caller },
+      error: callerError,
+    } = await callerClient.auth.getUser();
 
-    const caller = await userRes.json();
-    if (!caller.id) return json({ error: "Invalid user" }, 401);
+    if (callerError || !caller?.id) {
+      return json({ error: callerError?.message ?? "Unauthorized" }, 401);
+    }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },

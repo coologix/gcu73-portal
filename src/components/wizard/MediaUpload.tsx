@@ -60,7 +60,7 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
         setUploading(false)
       }
     },
-    [fieldId, onChange],
+    [fieldId, onChange, user?.id],
   )
 
   const handleFileChange = useCallback(
@@ -85,29 +85,66 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
     <div className="w-full space-y-4">
       {/* Preview */}
       {previewUrl && (
-        <div className="relative inline-block">
-          <img
-            src={previewUrl}
-            alt="Upload preview"
-            className={cn(
-              'rounded-xl object-cover',
-              'w-48 h-48 sm:w-56 sm:h-56',
-              'border-2 border-muted',
-            )}
-          />
-          <button
-            type="button"
-            onClick={clearUpload}
-            className={cn(
-              'absolute -top-2 -right-2',
-              'size-7 rounded-full bg-destructive text-white',
-              'flex items-center justify-center',
-              'shadow-md hover:bg-destructive/90 transition-colors',
-            )}
-            aria-label="Remove upload"
-          >
-            <X className="size-4" />
-          </button>
+        <div
+          className={cn(
+            'mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-gcu-cream-dark bg-gradient-to-b from-white to-gcu-cream/40 shadow-sm',
+            error && 'animate-shake',
+          )}
+        >
+          <div className="flex items-start justify-between gap-3 border-b border-gcu-cream-dark px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-gcu-maroon-dark">
+                Photo preview
+              </p>
+              <p className="mt-1 text-xs text-gcu-brown">
+                Check the framing before you continue.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={clearUpload}
+              className={cn(
+                'inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-gcu-cream-dark bg-white text-gcu-maroon shadow-sm transition-colors',
+                'hover:bg-gcu-cream hover:text-gcu-maroon-dark',
+              )}
+              aria-label="Remove upload"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="p-4 sm:p-5">
+            <div className="mx-auto w-full max-w-[18rem] overflow-hidden rounded-[1.25rem] border border-gcu-cream-dark bg-white shadow-inner">
+              <div className="aspect-[3/4] w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(246,239,232,0.8)_55%,_rgba(236,225,215,0.9))] p-3">
+                <img
+                  src={previewUrl}
+                  alt="Upload preview"
+                  className="h-full w-full rounded-2xl object-contain"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => cameraInputRef.current?.click()}
+                className="min-h-12 gap-2 border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+              >
+                <Camera className="size-4" />
+                Take again
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="min-h-12 gap-2 border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+              >
+                <Upload className="size-4" />
+                Choose different photo
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -129,13 +166,13 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
 
       {/* Action buttons */}
       {!previewUrl && !uploading && (
-        <div className={cn('flex flex-col sm:flex-row gap-3', error && 'animate-shake')}>
+        <div className={cn('flex flex-col gap-3 sm:flex-row', error && 'animate-shake')}>
           {/* Camera capture (front camera) */}
           <Button
             type="button"
             variant="outline"
             onClick={() => cameraInputRef.current?.click()}
-            className="min-h-14 gap-3 text-base flex-1"
+            className="min-h-14 flex-1 gap-3 border-gcu-cream-dark text-base text-gcu-maroon hover:bg-gcu-cream-dark"
           >
             <Camera className="size-5" />
             Take Photo
@@ -146,7 +183,7 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
             type="button"
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
-            className="min-h-14 gap-3 text-base flex-1"
+            className="min-h-14 flex-1 gap-3 border-gcu-cream-dark text-base text-gcu-maroon hover:bg-gcu-cream-dark"
           >
             <Upload className="size-5" />
             Choose File

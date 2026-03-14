@@ -8,6 +8,7 @@ import {
   XCircle,
   Mail,
   Trash2,
+  Copy,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -122,19 +123,11 @@ export function InvitationManager({
       })
       if (error) throw error
 
-      // Send the actual invitation email via Supabase Auth
-      const { error: authError } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/form/${forms.find(f => f.id === selectedFormId)?.slug ?? ''}`,
-        },
-      })
-      if (authError) {
-        console.warn('Could not send invitation email:', authError.message)
-        // Don't throw — the invitation record was created, email sending is best-effort
-      }
-
+      const inviteLink = `${window.location.origin}/invite?token=${token}`
+      toast.success(
+        `Invitation created for ${email}`,
+        { description: `Share this link: ${inviteLink}` },
+      )
       setSingleEmail('')
       void fetchInvitations()
     } catch (err) {
@@ -179,19 +172,7 @@ export function InvitationManager({
       const { error } = await supabase.from('invitations').insert(rows)
       if (error) throw error
 
-      // Send invitation emails (best-effort, don't block on failures)
-      const slug = forms.find(f => f.id === selectedFormId)?.slug ?? ''
-      for (const email of newEmails) {
-        void supabase.auth.signInWithOtp({
-          email,
-          options: {
-            shouldCreateUser: true,
-            emailRedirectTo: `${window.location.origin}/form/${slug}`,
-          },
-        })
-      }
-
-      toast.success(`${newEmails.length} invitation${newEmails.length !== 1 ? 's' : ''} sent${skipped > 0 ? ` (${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped)` : ''}`)
+      toast.success(`${newEmails.length} invitation${newEmails.length !== 1 ? 's' : ''} created${skipped > 0 ? ` (${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped)` : ''}`)
 
       setBulkEmails([])
       void fetchInvitations()
@@ -388,6 +369,19 @@ export function InvitationManager({
                             <div className="flex items-center justify-end gap-1">
                               {inv.status === 'pending' && (
                                 <>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-xs"
+                                    onClick={() => {
+                                      const link = `${window.location.origin}/invite?token=${inv.token}`
+                                      void navigator.clipboard.writeText(link)
+                                      toast.success('Invite link copied to clipboard')
+                                    }}
+                                    title="Copy invite link"
+                                  >
+                                    <Copy className="size-3.5" />
+                                  </Button>
                                   <Button
                                     type="button"
                                     variant="ghost"

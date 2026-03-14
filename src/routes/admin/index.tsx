@@ -67,24 +67,40 @@ export default function AdminDashboardPage() {
       try {
         // Fetch stats in parallel
         const [profilesRes, submissionsRes, invitationsRes] = await Promise.all([
-          supabase.from('profiles').select('id', { count: 'exact', head: true }),
-          supabase.from('submissions').select('id, status', { count: 'exact' }),
+          supabase.from('profiles').select('id, role'),
+          supabase.from('submissions').select('id, user_id, status', { count: 'exact' }),
           supabase
             .from('invitations')
             .select('id', { count: 'exact', head: true })
             .eq('status', 'pending'),
         ])
 
-        const totalMembers = profilesRes.count ?? 0
+        if (profilesRes.error) throw new Error(profilesRes.error.message)
+        if (submissionsRes.error) throw new Error(submissionsRes.error.message)
+        if (invitationsRes.error) throw new Error(invitationsRes.error.message)
+
+        const submittedUserIds = new Set(
+          submissionsRes.data
+            ?.filter((submission) => submission.status === 'submitted')
+            .map((submission) => submission.user_id) ?? [],
+        )
+
+        const eligibleMembers =
+          profilesRes.data?.filter(
+            (profile) => profile.role !== 'admin' || submittedUserIds.has(profile.id),
+          ) ?? []
+
+        const totalMembers = eligibleMembers.length
         const totalSubmissions = submissionsRes.count ?? 0
         const pendingInvitations = invitationsRes.count ?? 0
 
-        // Calculate completion rate
-        const submittedCount =
-          submissionsRes.data?.filter((s) => s.status === 'submitted').length ?? 0
+        const completedMemberCount = eligibleMembers.filter((profile) =>
+          submittedUserIds.has(profile.id),
+        ).length
+
         const completionRate =
-          totalSubmissions > 0
-            ? Math.round((submittedCount / totalSubmissions) * 100)
+          totalMembers > 0
+            ? Math.round((completedMemberCount / totalMembers) * 100)
             : 0
 
         setStats({
@@ -185,16 +201,22 @@ export default function AdminDashboardPage() {
 
   const quickActions = [
     {
+      href: '/admin/invitations',
+      icon: Inbox,
+      title: 'Manage Invitations',
+      description: 'Review status, resend links, and track invitation history',
+    },
+    {
+      href: '/admin/invitations?tab=single',
+      icon: Send,
+      title: 'Invite One Member',
+      description: 'Open the single-invite flow for a selected form',
+    },
+    {
       href: '/admin/forms',
       icon: FileText,
       title: 'View Forms',
       description: 'Manage data collection forms',
-    },
-    {
-      href: '/admin/invitations',
-      icon: Send,
-      title: 'Send Invitations',
-      description: 'Invite members to the portal',
     },
     {
       href: '/admin/export',

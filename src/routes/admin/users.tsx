@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { Loader2, Users as UsersIcon, Search, Trash2 } from 'lucide-react'
+import { Loader2, Users as UsersIcon, Search, Trash2, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import {
   Card,
   CardContent,
@@ -43,13 +44,33 @@ const fadeUp = {
 }
 
 function getInitials(name: string | null): string {
-  if (!name) return '?'
-  return name
+  const source = name?.trim()
+  if (!source) return '?'
+  return source
     .split(' ')
     .map((p) => p[0])
     .join('')
     .toUpperCase()
     .slice(0, 2)
+}
+
+function getEmailInitials(email: string): string {
+  return email
+    .split('@')[0]
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '?'
+}
+
+function formatJoinedDate(value: string): string {
+  return new Date(value).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 export default function UsersPage() {
@@ -59,6 +80,10 @@ export default function UsersPage() {
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [newAdminName, setNewAdminName] = useState('')
+  const [newAdminEmail, setNewAdminEmail] = useState('')
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
+  const [roleChangeTargetId, setRoleChangeTargetId] = useState<string | null>(null)
 
   async function fetchProfiles() {
     setIsLoading(true)
@@ -82,6 +107,90 @@ export default function UsersPage() {
   useEffect(() => {
     void fetchProfiles()
   }, [])
+
+  async function handleCreateAdmin() {
+    const email = newAdminEmail.trim().toLowerCase()
+    const fullName = newAdminName.trim()
+
+    if (!email) {
+      toast.error('Enter an email address for the admin account')
+      return
+    }
+
+    setIsCreatingAdmin(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-admin-account', {
+        body: {
+          action: 'invite_admin',
+          email,
+          fullName: fullName || null,
+        },
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      if (data?.error) {
+        throw new Error(data.error)
+      }
+
+      toast.success(
+        data?.message ?? `Admin access created for ${email}`,
+      )
+      setNewAdminEmail('')
+      setNewAdminName('')
+      void fetchProfiles()
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to create admin account',
+      )
+    } finally {
+      setIsCreatingAdmin(false)
+    }
+  }
+
+  async function handleRoleChange(profile: Profile, nextRole: Profile['role']) {
+    if (profile.id === currentUser?.id && nextRole !== 'admin') {
+      toast.error('You cannot remove your own admin access')
+      return
+    }
+
+    setRoleChangeTargetId(profile.id)
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-admin-account', {
+        body: {
+          action: 'set_role',
+          userId: profile.id,
+          role: nextRole,
+        },
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      if (data?.error) {
+        throw new Error(data.error)
+      }
+
+      setProfiles((prev) =>
+        prev.map((item) =>
+          item.id === profile.id ? { ...item, role: nextRole } : item,
+        ),
+      )
+      toast.success(
+        data?.message ??
+          `${profile.email} is now ${nextRole === 'admin' ? 'an admin' : 'a user'}`,
+      )
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to update account role',
+      )
+    } finally {
+      setRoleChangeTargetId(null)
+    }
+  }
 
   async function handleDeleteUser() {
     if (!deleteTarget) return
@@ -145,6 +254,9 @@ export default function UsersPage() {
     )
   })
 
+  const adminProfiles = filtered.filter((profile) => profile.role === 'admin')
+  const memberProfiles = filtered.filter((profile) => profile.role !== 'admin')
+
   return (
     <motion.div
       className="space-y-6"
@@ -158,7 +270,7 @@ export default function UsersPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-gcu-maroon-dark">Users</h1>
         <p className="text-sm text-gcu-brown">
-          All registered users in the portal
+          Manage administrator accounts and review non-admin signup details
         </p>
       </div>
 
@@ -173,107 +285,347 @@ export default function UsersPage() {
         />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-4 p-6">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Skeleton className="size-8 rounded-full" />
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-5 w-32" />
-                </div>
-              ))}
+      <Card className="border-gcu-cream-dark">
+        <CardContent className="space-y-4 p-5">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-gcu-maroon-dark">
+              Create Admin Account
+            </h2>
+            <p className="text-sm text-gcu-brown">
+              Invite a new admin by email, or upgrade an existing account if that
+              email is already registered.
+            </p>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr),minmax(0,1.2fr),auto] lg:items-end">
+            <div className="space-y-2">
+              <Label htmlFor="admin-name">Full Name</Label>
+              <Input
+                id="admin-name"
+                value={newAdminName}
+                onChange={(e) => setNewAdminName(e.target.value)}
+                placeholder="Patrick Jude Mbano"
+                className="border-gcu-cream-dark"
+              />
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="rounded-lg bg-gcu-cream-dark/30 py-16 text-center">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-gcu-cream-dark">
-                <UsersIcon className="size-7 text-gcu-brown" />
-              </div>
-              <p className="mt-4 text-sm font-medium text-gcu-maroon-dark">No users found</p>
-              <p className="mt-1 text-xs text-gcu-brown">
-                {search
-                  ? 'Try adjusting your search.'
-                  : 'No users have registered yet.'}
-              </p>
+            <div className="space-y-2">
+              <Label htmlFor="admin-email">Email Address</Label>
+              <Input
+                id="admin-email"
+                type="email"
+                value={newAdminEmail}
+                onChange={(e) => setNewAdminEmail(e.target.value)}
+                placeholder="admin@example.com"
+                className="border-gcu-cream-dark"
+              />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead className="hidden sm:table-cell">Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="hidden sm:table-cell">Joined</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((profile) => {
-                    const isSelf = profile.id === currentUser?.id
-                    return (
-                      <TableRow key={profile.id} className="transition-colors hover:bg-gcu-cream/50">
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="size-7">
-                              <AvatarImage
-                                src={profile.avatar_url ?? undefined}
-                                alt={profile.full_name ?? profile.email}
-                              />
-                              <AvatarFallback className="text-xs bg-gcu-cream-dark text-gcu-maroon">
-                                {getInitials(profile.full_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium text-gcu-maroon-dark">
-                              {profile.full_name ?? 'Unnamed'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-gcu-brown">
-                          {profile.email}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              profile.role === 'admin' ? 'default' : 'secondary'
-                            }
-                          >
-                            {profile.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-gcu-brown">
-                          {new Date(profile.created_at).toLocaleDateString(
-                            'en-GB',
-                            { day: 'numeric', month: 'short', year: 'numeric' },
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {!isSelf && (
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() => setDeleteTarget(profile)}
-                              title={`Delete ${profile.full_name || profile.email}`}
-                            >
-                              <Trash2 className="size-3.5 text-destructive" />
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+            <Button
+              type="button"
+              className="bg-gcu-maroon hover:bg-gcu-maroon-light"
+              disabled={isCreatingAdmin}
+              onClick={handleCreateAdmin}
+            >
+              {isCreatingAdmin ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-1.5 size-4" />
+                  Add Admin
+                </>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card className="border-gcu-cream-dark">
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-gcu-brown/70">
+                Admin Accounts
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-gcu-maroon-dark">
+                {adminProfiles.length}
+              </p>
+            </div>
+            <Badge variant="default">Internal access</Badge>
+          </CardContent>
+        </Card>
+        <Card className="border-gcu-cream-dark">
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-gcu-brown/70">
+                Member Signups
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-gcu-maroon-dark">
+                {memberProfiles.length}
+              </p>
+            </div>
+            <Badge variant="secondary">Non-admin</Badge>
+          </CardContent>
+        </Card>
+      </div>
+
+      {isLoading ? (
+        <Card>
+          <CardContent className="space-y-4 p-6">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="size-8 rounded-full" />
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="rounded-lg bg-gcu-cream-dark/30 py-16 text-center">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-gcu-cream-dark">
+              <UsersIcon className="size-7 text-gcu-brown" />
+            </div>
+            <p className="mt-4 text-sm font-medium text-gcu-maroon-dark">No users found</p>
+            <p className="mt-1 text-xs text-gcu-brown">
+              {search
+                ? 'Try adjusting your search.'
+                : 'No users have registered yet.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          <section className="space-y-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gcu-maroon-dark">
+                  Administrators
+                </h2>
+                <p className="text-sm text-gcu-brown">
+                  Internal accounts with access to manage forms, submissions, and users.
+                </p>
+              </div>
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-gcu-brown/70">
+                {adminProfiles.length} account{adminProfiles.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                {adminProfiles.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-gcu-brown">
+                    No administrators match this search.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>User</TableHead>
+                          <TableHead className="hidden sm:table-cell">Email</TableHead>
+                          <TableHead>Access</TableHead>
+                          <TableHead className="hidden sm:table-cell">Joined</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {adminProfiles.map((profile) => {
+                          const isSelf = profile.id === currentUser?.id
+                          return (
+                            <TableRow key={profile.id} className="transition-colors hover:bg-gcu-cream/50">
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="size-8">
+                                    <AvatarImage
+                                      src={profile.avatar_url ?? undefined}
+                                      alt={profile.full_name ?? profile.email}
+                                    />
+                                    <AvatarFallback className="text-xs bg-gcu-cream-dark text-gcu-maroon">
+                                      {profile.full_name
+                                        ? getInitials(profile.full_name)
+                                        : getEmailInitials(profile.email)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0">
+                                    <p className="truncate font-medium text-gcu-maroon-dark">
+                                      {profile.full_name ?? 'No name set'}
+                                    </p>
+                                    {!profile.full_name && (
+                                      <p className="text-xs text-gcu-brown">
+                                        Name not set on profile
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell text-gcu-brown">
+                                {profile.email}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="default">admin</Badge>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell text-gcu-brown">
+                                {formatJoinedDate(profile.created_at)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  {!isSelf && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+                                      disabled={roleChangeTargetId === profile.id}
+                                      onClick={() => handleRoleChange(profile, 'user')}
+                                    >
+                                      {roleChangeTargetId === profile.id ? (
+                                        <Loader2 className="size-4 animate-spin" />
+                                      ) : (
+                                        'Demote'
+                                      )}
+                                    </Button>
+                                  )}
+                                  {!isSelf && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-xs"
+                                      onClick={() => setDeleteTarget(profile)}
+                                      title={`Delete ${profile.full_name || profile.email}`}
+                                    >
+                                      <Trash2 className="size-3.5 text-destructive" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gcu-maroon-dark">
+                  Non-Admin Signups
+                </h2>
+                <p className="text-sm text-gcu-brown">
+                  Signup/profile details supplied by portal members without admin access.
+                </p>
+              </div>
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-gcu-brown/70">
+                {memberProfiles.length} member{memberProfiles.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                {memberProfiles.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-gcu-brown">
+                    No non-admin signups match this search.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>User</TableHead>
+                          <TableHead className="hidden sm:table-cell">Email</TableHead>
+                          <TableHead className="hidden sm:table-cell">Joined</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {memberProfiles.map((profile) => {
+                          const isSelf = profile.id === currentUser?.id
+                          return (
+                            <TableRow key={profile.id} className="transition-colors hover:bg-gcu-cream/50">
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="size-8">
+                                    <AvatarImage
+                                      src={profile.avatar_url ?? undefined}
+                                      alt={profile.full_name ?? profile.email}
+                                    />
+                                    <AvatarFallback className="text-xs bg-gcu-cream-dark text-gcu-maroon">
+                                      {profile.full_name
+                                        ? getInitials(profile.full_name)
+                                        : getEmailInitials(profile.email)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0">
+                                    <p className="truncate font-medium text-gcu-maroon-dark">
+                                      {profile.full_name ?? 'No name provided'}
+                                    </p>
+                                    <p className="text-xs text-gcu-brown">
+                                      {profile.full_name
+                                        ? 'Profile name captured for this member'
+                                        : 'Email-only signup'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell text-gcu-brown">
+                                {profile.email}
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell text-gcu-brown">
+                                {formatJoinedDate(profile.created_at)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  {!isSelf && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+                                      disabled={roleChangeTargetId === profile.id}
+                                      onClick={() => handleRoleChange(profile, 'admin')}
+                                    >
+                                      {roleChangeTargetId === profile.id ? (
+                                        <Loader2 className="size-4 animate-spin" />
+                                      ) : (
+                                        'Make admin'
+                                      )}
+                                    </Button>
+                                  )}
+                                  {!isSelf && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-xs"
+                                      onClick={() => setDeleteTarget(profile)}
+                                      title={`Delete ${profile.full_name || profile.email}`}
+                                    >
+                                      <Trash2 className="size-3.5 text-destructive" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        </div>
+      )}
+
       {!isLoading && (
         <p className="text-xs text-gcu-brown">
-          {filtered.length} user{filtered.length !== 1 ? 's' : ''}
-          {search ? ' matching your search' : ' total'}
+          {adminProfiles.length} admin account{adminProfiles.length !== 1 ? 's' : ''} and{' '}
+          {memberProfiles.length} non-admin signup{memberProfiles.length !== 1 ? 's' : ''}
+          {search ? ' matching your search' : ' in total'}
         </p>
       )}
 

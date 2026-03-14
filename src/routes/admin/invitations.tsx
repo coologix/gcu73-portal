@@ -65,10 +65,10 @@ export default function InvitationsPage() {
       {user && forms.length > 0 && (
         <Card className="border-gcu-cream-dark">
           <CardHeader>
-            <CardTitle className="text-base text-gcu-maroon-dark">Send Invitations</CardTitle>
+            <CardTitle className="text-base text-gcu-maroon-dark">Invitation Hub</CardTitle>
             <CardDescription>
-              Invite members individually or in bulk via CSV upload.
-              The &ldquo;All Invitations&rdquo; tab shows sent invitations with actions to resend, cancel, or delete.
+              Start with the full invitation history, then switch into single or bulk send
+              when you need to create new invitations.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -200,7 +200,9 @@ export default function FormsPage() {
                 <TableBody>
                   {forms.map((form) => (
                     <TableRow key={form.id} className="transition-colors hover:bg-gcu-cream/50">
-                      <TableCell className="font-medium text-gcu-maroon-dark max-w-[200px] break-words">{form.title}</TableCell>
+                      <TableCell className="font-medium text-gcu-maroon-dark">
+                          <span className="line-clamp-2">{form.title}</span>
+                        </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <code className="rounded bg-gcu-cream-dark px-1.5 py-0.5 text-xs text-gcu-brown">
                           {form.slug}

@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
+import { toast } from 'sonner'
 import {
   Send,
   Loader2,
   RotateCcw,
   XCircle,
   Mail,
+  Trash2,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -105,7 +107,9 @@ export function InvitationManager({
         .limit(1)
 
       if (existing && existing.length > 0) {
-        throw new Error(`An invitation is already pending for ${email}`)
+        toast.warning(`An invitation is already pending for ${email}`)
+        setSendingSingle(false)
+        return
       }
 
       const token = crypto.randomUUID()
@@ -134,9 +138,7 @@ export function InvitationManager({
       setSingleEmail('')
       void fetchInvitations()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to send invitation'
-      console.error(msg)
-      alert(msg)
+      toast.error(err instanceof Error ? err.message : 'Failed to send invitation')
     } finally {
       setSendingSingle(false)
     }
@@ -159,7 +161,7 @@ export function InvitationManager({
       const newEmails = bulkEmails.filter(e => !existingEmails.has(e))
 
       if (newEmails.length === 0) {
-        alert('All these emails already have pending invitations.')
+        toast.warning('All these emails already have pending invitations.')
         setSendingBulk(false)
         return
       }
@@ -189,14 +191,12 @@ export function InvitationManager({
         })
       }
 
-      const msg = `${newEmails.length} invitation${newEmails.length !== 1 ? 's' : ''} sent${skipped > 0 ? ` (${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped)` : ''}`
-      alert(msg)
+      toast.success(`${newEmails.length} invitation${newEmails.length !== 1 ? 's' : ''} sent${skipped > 0 ? ` (${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped)` : ''}`)
 
       setBulkEmails([])
       void fetchInvitations()
     } catch (err) {
-      console.error('Failed to send bulk invitations:', err)
-      alert(err instanceof Error ? err.message : 'Failed to send invitations')
+      toast.error(err instanceof Error ? err.message : 'Failed to send invitations')
     } finally {
       setSendingBulk(false)
     }
@@ -229,9 +229,26 @@ export function InvitationManager({
         .update({ status: 'cancelled' as const })
         .eq('id', id)
       if (error) throw error
+      toast.success('Invitation cancelled')
       void fetchInvitations()
     } catch (err) {
-      console.error('Failed to cancel invitation:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel')
+    }
+  }
+
+  // ── Delete invite ──────────────────────────────────────
+
+  const deleteInvite = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('invitations')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
+      setInvitations((prev) => prev.filter((i) => i.id !== id))
+      toast.success('Invitation deleted')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete')
     }
   }
 
@@ -402,6 +419,15 @@ export function InvitationManager({
                                   <RotateCcw className="size-3.5" />
                                 </Button>
                               )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() => deleteInvite(inv.id)}
+                                title="Delete"
+                              >
+                                <Trash2 className="size-3.5 text-destructive" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>

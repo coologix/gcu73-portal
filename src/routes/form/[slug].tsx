@@ -54,26 +54,6 @@ export default function FormPage() {
             throw new Error('Submission does not belong to this form')
           }
 
-          if (existingSubmission.status === 'submitted') {
-            if (invitationToken) {
-              const { error: invitationError } =
-                await completeInvitationForCurrentUser({
-                  formId: formData.id,
-                  token: invitationToken,
-                })
-
-              if (invitationError) {
-                console.warn(
-                  'Failed to reconcile invitation completion:',
-                  invitationError.message,
-                )
-              }
-            }
-
-            navigate(`/submissions/${existingSubmission.id}`, { replace: true })
-            return
-          }
-
           if (!cancelled) {
             setRouteStatus('ready')
           }

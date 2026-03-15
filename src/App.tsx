@@ -20,6 +20,9 @@ const DashboardPage = lazy(() => import('@/routes/dashboard'))
 const NotificationsPage = lazy(() => import('@/routes/notifications'))
 const ProfilePage = lazy(() => import('@/routes/profile'))
 const SubmissionDetailPage = lazy(() => import('@/routes/submission-detail'))
+const SubmissionPrintPreviewPage = lazy(
+  () => import('@/routes/submission-print-preview'),
+)
 const AdminDashboardPage = lazy(() => import('@/routes/admin/index'))
 const AdminFormsPage = lazy(() => import('@/routes/admin/forms'))
 const AdminFormBuilderPage = lazy(() => import('@/routes/admin/form-builder'))
@@ -88,6 +91,7 @@ function App() {
             <Route element={<AuthGuard />}>
               <Route path="/form/:slug" element={<FormPage />} />
               <Route path="/form/:slug/submissions/:submissionId/edit" element={<FormPage />} />
+              <Route path="/submissions/:submissionId/print" element={<SubmissionPrintPreviewPage />} />
             </Route>
 
             {/* Protected - Admin */}
@@ -101,6 +105,10 @@ function App() {
               <Route path="/admin/invitations" element={<AdminInvitationsPage />} />
               <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
               <Route path="/admin/export" element={<AdminExportPage />} />
+            </Route>
+
+            <Route element={<AuthGuard><AdminGuard /></AuthGuard>}>
+              <Route path="/admin/forms/:formId/submissions/:id/print" element={<SubmissionPrintPreviewPage />} />
             </Route>
 
             <Route path="/admin/submissions/:formId/:id" element={<LegacyAdminSubmissionRedirect />} />

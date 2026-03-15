@@ -5,10 +5,12 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  Download,
   FileText,
   Loader2,
   Pencil,
 } from 'lucide-react'
+import { getUserSubmissionPrintPreviewPath } from '@/lib/submission-print'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -165,7 +167,7 @@ export default function UserSubmissionDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <Button
           type="button"
           variant="ghost"
@@ -183,9 +185,37 @@ export default function UserSubmissionDetailPage() {
             Review the information you submitted for this form.
           </p>
         </div>
-        <Badge variant={statusVariant[submission.status]}>
-          {submission.status.replace('_', ' ')}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {values.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              className="border-gcu-cream-dark"
+              onClick={() =>
+                navigate(getUserSubmissionPrintPreviewPath(submission.id))
+              }
+            >
+              <Download className="mr-1.5 size-4" />
+              Print Preview
+            </Button>
+          )}
+          {(submission.status === 'submitted' ||
+            submission.status === 'update_requested') && (
+            <Button
+              type="button"
+              className="bg-gcu-maroon hover:bg-gcu-maroon-light"
+              onClick={() =>
+                navigate(`/form/${form.slug}/submissions/${submission.id}/edit`)
+              }
+            >
+              <Pencil className="mr-1.5 size-4" />
+              Edit form
+            </Button>
+          )}
+          <Badge variant={statusVariant[submission.status]}>
+            {submission.status.replace('_', ' ')}
+          </Badge>
+        </div>
       </div>
 
       <Card className="border-gcu-cream-dark">
@@ -277,21 +307,6 @@ export default function UserSubmissionDetailPage() {
         </CardContent>
       </Card>
 
-      {submission.status === 'update_requested' && (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            className="bg-gcu-maroon hover:bg-gcu-maroon-light"
-            onClick={() =>
-              navigate(`/form/${form.slug}/submissions/${submission.id}/edit`)
-            }
-          >
-            <Pencil className="mr-1.5 size-4" />
-            Edit submission
-          </Button>
-        </div>
-      )}
-
       {submission.status === 'submitted' && (
         <div className="rounded-lg border border-gcu-cream-dark bg-gcu-cream-dark/40 p-4 text-sm text-gcu-brown">
           <div className="flex items-center gap-2 font-medium text-gcu-maroon-dark">
@@ -299,8 +314,21 @@ export default function UserSubmissionDetailPage() {
             Submission received
           </div>
           <p className="mt-2">
-            Your submission is complete. If the administrator needs changes,
-            you will see an update request here.
+            Your submission is complete. Open the print preview for a cleaner
+            A4 printout or make edits when needed.
+          </p>
+        </div>
+      )}
+
+      {submission.status === 'update_requested' && (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-gcu-brown">
+          <div className="flex items-center gap-2 font-medium text-destructive">
+            <Pencil className="size-4" />
+            Update required
+          </div>
+          <p className="mt-2">
+            An administrator requested changes to this form. Open the editor,
+            update the fields, and submit again.
           </p>
         </div>
       )}

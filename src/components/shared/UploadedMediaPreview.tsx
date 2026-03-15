@@ -42,12 +42,14 @@ export function UploadedMediaPreview({
 
   return (
     <div className="mt-3 overflow-hidden rounded-xl border border-gcu-cream-dark bg-gcu-cream-dark/20">
-      <img
-        src={url}
-        alt={label}
-        loading="lazy"
-        className="block max-h-80 w-full max-w-md object-cover"
-      />
+      <div className="flex min-h-72 items-center justify-center bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(245,239,233,0.65))] p-4">
+        <img
+          src={url}
+          alt={label}
+          loading="lazy"
+          className="block max-h-[28rem] w-full max-w-md object-contain"
+        />
+      </div>
       <div className="flex flex-col gap-2 border-t border-gcu-cream-dark px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-gcu-brown">
           Inline preview

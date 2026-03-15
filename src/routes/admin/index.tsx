@@ -51,6 +51,7 @@ interface DashboardStats {
 
 interface RecentSubmission {
   id: string
+  form_id: string
   user_id: string
   submitter_name: string
   status: string
@@ -146,6 +147,7 @@ export default function AdminDashboardPage() {
         setRecentSubmissions(
           recent.map((r) => ({
             id: r.id,
+            form_id: r.form_id,
             user_id: r.user_id,
             submitter_name:
               profileMap.get(r.user_id)?.full_name ||
@@ -426,9 +428,13 @@ export default function AdminDashboardPage() {
               ) : (
                 <div className="space-y-2">
                   {recentSubmissions.map((sub) => (
-                    <div
+                    <button
                       key={sub.id}
-                      className="flex items-center justify-between rounded-lg border border-gcu-cream-dark p-3 transition-colors hover:bg-gcu-cream/50"
+                      type="button"
+                      onClick={() =>
+                        navigate(`/admin/forms/${sub.form_id}/submissions/${sub.id}`)
+                      }
+                      className="group flex w-full items-center justify-between rounded-lg border border-gcu-cream-dark p-3 text-left transition-colors hover:bg-gcu-cream/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gcu-maroon/30"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-gcu-maroon-dark">
@@ -442,18 +448,21 @@ export default function AdminDashboardPage() {
                           })}
                         </p>
                       </div>
-                      <Badge
-                        variant={
-                          sub.status === 'submitted'
-                            ? 'default'
-                            : sub.status === 'update_requested'
-                              ? 'destructive'
-                              : 'secondary'
-                        }
-                      >
-                        {sub.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
+                      <div className="ml-3 flex items-center gap-2">
+                        <Badge
+                          variant={
+                            sub.status === 'submitted'
+                              ? 'default'
+                              : sub.status === 'update_requested'
+                                ? 'destructive'
+                                : 'secondary'
+                          }
+                        >
+                          {sub.status.replace('_', ' ')}
+                        </Badge>
+                        <ArrowRight className="size-4 text-gcu-brown/40 transition-transform group-hover:translate-x-0.5 group-hover:text-gcu-maroon" />
+                      </div>
+                    </button>
                   ))}
                 </div>
               )}

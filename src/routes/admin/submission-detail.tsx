@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { toast } from 'sonner'
-import { Loader2, ArrowLeft, AlertCircle, Trash2 } from 'lucide-react'
+import {
+  Loader2,
+  ArrowLeft,
+  AlertCircle,
+  Download,
+  Trash2,
+} from 'lucide-react'
+import { getAdminSubmissionPrintPreviewPath } from '@/lib/submission-print'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -201,6 +208,17 @@ export default function SubmissionDetailPage() {
           >
             {submission.status.replace('_', ' ')}
           </Badge>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              navigate(getAdminSubmissionPrintPreviewPath(formId!, submission.id))
+            }
+          >
+            <Download className="mr-1.5 size-4" />
+            Print Preview
+          </Button>
           <Button
             type="button"
             variant="outline"

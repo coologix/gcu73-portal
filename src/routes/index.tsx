@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import {
-  GraduationCap,
   Shield,
   ArrowRight,
   Mail,
@@ -135,7 +134,7 @@ export default function HomePage() {
             className="mt-4 text-sm text-gcu-brown-light"
           >
             An initiative by{' '}
-            <span className="font-semibold text-gcu-maroon">Patrick Jude Mbano</span>
+            <span className="font-semibold text-gcu-maroon">GCU Class of Jan 1973</span>
           </motion.p>
 
           {/* Action buttons */}
@@ -279,10 +278,9 @@ export default function HomePage() {
             <p className="mt-4 text-base leading-relaxed text-gcu-brown">
               This initiative is organized by{' '}
               <span className="font-semibold text-gcu-maroon">
-                Patrick Jude Mbano
+                GCU Class of Jan 1973
               </span>
-              , proud alumnus of GCU Class of &apos;73, to ensure the
-              welfare and protection of his fellow classmates.
+              , to ensure the welfare and protection of fellow classmates.
             </p>
           </motion.div>
 

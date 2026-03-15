@@ -16,6 +16,7 @@ const FIELD_TYPES = [
   { value: 'number', label: 'Number' },
   { value: 'email', label: 'Email' },
   { value: 'password', label: 'Password' },
+  { value: 'tel', label: 'Phone' },
   { value: 'date', label: 'Date' },
   { value: 'media', label: 'Media' },
 ] as const
@@ -152,7 +153,7 @@ export function FieldConfig({ field, onSave, onCancel, className }: FieldConfigP
     })
   }
 
-  const showTextValidation = ['text', 'password', 'email', 'textarea'].includes(fieldType)
+  const showTextValidation = ['text', 'password', 'email', 'textarea', 'tel'].includes(fieldType)
   const showNumberValidation = fieldType === 'number'
   const showMediaValidation = fieldType === 'media'
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Camera, Upload, X, Loader2 } from 'lucide-react'
+import { Upload, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -17,7 +17,6 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string>(value || '')
-  const cameraInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const uploadFile = useCallback(
@@ -124,21 +123,12 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => cameraInputRef.current?.click()}
-                className="min-h-12 gap-2 border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
-              >
-                <Camera className="size-4" />
-                Take again
-              </Button>
+            <div className="mt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                className="min-h-12 gap-2 border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+                className="min-h-12 w-full gap-2 border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
               >
                 <Upload className="size-4" />
                 Choose different photo
@@ -166,24 +156,12 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
 
       {/* Action buttons */}
       {!previewUrl && !uploading && (
-        <div className={cn('flex flex-col gap-3 sm:flex-row', error && 'animate-shake')}>
-          {/* Camera capture (front camera) */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => cameraInputRef.current?.click()}
-            className="min-h-14 flex-1 gap-3 border-gcu-cream-dark text-base text-gcu-maroon hover:bg-gcu-cream-dark"
-          >
-            <Camera className="size-5" />
-            Take Photo
-          </Button>
-
-          {/* File picker */}
+        <div className={cn(error && 'animate-shake')}>
           <Button
             type="button"
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
-            className="min-h-14 flex-1 gap-3 border-gcu-cream-dark text-base text-gcu-maroon hover:bg-gcu-cream-dark"
+            className="min-h-14 w-full gap-3 border-gcu-cream-dark text-base text-gcu-maroon hover:bg-gcu-cream-dark"
           >
             <Upload className="size-5" />
             Choose File
@@ -191,15 +169,7 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
         </div>
       )}
 
-      {/* Hidden file inputs */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="user"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"

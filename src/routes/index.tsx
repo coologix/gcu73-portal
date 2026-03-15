@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ChevronRight,
 } from 'lucide-react'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -94,10 +95,14 @@ export default function HomePage() {
           animate="visible"
           variants={stagger}
         >
-          {/* Badge */}
+          {/* School crest */}
           <motion.div variants={fadeUp} custom={0}>
+            <SchoolLogo className="size-24 rounded-2xl drop-shadow-md sm:size-28" />
+          </motion.div>
+
+          {/* Badge */}
+          <motion.div variants={fadeUp} custom={0.5} className="mt-5">
             <span className="inline-flex items-center gap-2 rounded-full border border-gcu-maroon/15 bg-white px-4 py-1.5 text-xs font-medium tracking-wide text-gcu-maroon uppercase shadow-sm">
-              <GraduationCap className="size-3.5" />
               Government College Umuahia &middot; Est. 1929
             </span>
           </motion.div>
@@ -288,9 +293,7 @@ export default function HomePage() {
             className="mt-10 rounded-xl border border-gcu-cream-dark bg-white p-6 shadow-sm sm:p-8"
           >
             <div className="flex items-start gap-4">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gcu-maroon">
-                <GraduationCap className="size-5 text-white" />
-              </div>
+              <SchoolLogo className="size-12 shrink-0 rounded-xl" />
               <div>
                 <h3 className="font-serif text-lg font-bold text-gcu-maroon-dark">
                   &ldquo;Eton of the East&rdquo;
@@ -319,9 +322,7 @@ export default function HomePage() {
       {/* ── Footer ────────────────────────────────────── */}
       <footer className="bg-gcu-maroon-dark py-12">
         <div className="mx-auto max-w-4xl px-6 text-center">
-          <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-full border border-white/15">
-            <GraduationCap className="size-5 text-gcu-gold-light" />
-          </div>
+          <SchoolLogo className="mx-auto mb-4 size-20 rounded-2xl drop-shadow-lg" />
           <p className="font-serif text-lg font-semibold text-white/90">
             Government College Umuahia
           </p>

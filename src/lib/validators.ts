@@ -30,7 +30,8 @@ export function buildFieldSchema(field: FormField): z.ZodType {
   switch (field.field_type) {
     case 'text':
     case 'password':
-    case 'textarea': {
+    case 'textarea':
+    case 'tel': {
       let s = z.string()
       if (field.is_required) s = s.min(1, 'This field is required')
       const minLen = num(rules, 'min_length')

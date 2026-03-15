@@ -133,7 +133,22 @@ begin
     6
   );
 
-  -- 7) Passport Photo
+  -- 7) Phone Number
+  insert into public.form_fields
+    (form_id, field_type, label, description, placeholder, is_required, is_sensitive, validation_rules, sort_order)
+  values (
+    v_form_id,
+    'tel',
+    'Phone Number',
+    'Your phone number including country code (e.g. +234 801 234 5678).',
+    '+234',
+    true,
+    false,
+    null,
+    7
+  );
+
+  -- 8) Passport Photo
   insert into public.form_fields
     (form_id, field_type, label, description, placeholder, is_required, is_sensitive, validation_rules, sort_order)
   values (
@@ -145,7 +160,7 @@ begin
     true,
     false,
     '{"max_file_size_mb": 5, "allowed_extensions": ["jpg", "jpeg", "png"]}'::jsonb,
-    7
+    8
   );
 
 end;

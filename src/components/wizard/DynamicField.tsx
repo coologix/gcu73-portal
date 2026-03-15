@@ -86,6 +86,21 @@ export function DynamicField({ field, control, errors, autoFocus }: DynamicField
                 />
               )
 
+            case 'tel':
+              return (
+                <input
+                  {...rhfField}
+                  ref={(el) => {
+                    rhfField.ref(el)
+                    ;(inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+                  }}
+                  type="tel"
+                  placeholder={field.placeholder ?? '+234'}
+                  className={cn(underlineClasses, hasError && errorClasses)}
+                  autoComplete="tel"
+                />
+              )
+
             case 'email':
               return (
                 <input

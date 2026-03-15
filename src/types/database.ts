@@ -50,7 +50,7 @@ export interface Form {
 export interface FormField {
   id: string
   form_id: string
-  field_type: 'text' | 'number' | 'date' | 'textarea' | 'media' | 'email' | 'password'
+  field_type: 'text' | 'number' | 'date' | 'textarea' | 'media' | 'email' | 'password' | 'tel'
   label: string
   description: string | null
   placeholder: string | null

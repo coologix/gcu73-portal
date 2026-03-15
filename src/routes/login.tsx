@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
-import { Loader2, Mail, ArrowLeft, GraduationCap, Shield, ArrowRight } from 'lucide-react'
+import { Loader2, Mail, ArrowLeft, Shield, ArrowRight } from 'lucide-react'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 import { useAuth } from '@/lib/auth'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -69,9 +70,7 @@ export default function LoginPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
-                <GraduationCap className="size-7 text-gcu-gold-light" />
-              </div>
+              <SchoolLogo className="size-16 rounded-2xl drop-shadow-lg" />
 
               <h1 className="mt-8 text-3xl font-bold leading-tight tracking-tight text-white xl:text-4xl">
                 Government College
@@ -109,9 +108,7 @@ export default function LoginPage() {
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             }} />
             <div className="relative">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
-                <GraduationCap className="size-6 text-gcu-gold-light" />
-              </div>
+              <SchoolLogo className="mx-auto size-14 rounded-2xl drop-shadow-lg" />
               <h1 className="mt-3 text-lg font-bold tracking-tight text-white">
                 Government College Umuahia
               </h1>

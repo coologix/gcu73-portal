@@ -224,15 +224,15 @@ otp_expiry = 3600
 
 # Custom email templates
 [auth.email.template.invite]
-subject = "You're Invited — GCU Class of '73 Group Life Insurance"
+subject = "You're Invited — Government College Umuahia, GCU Class of Jan 1973"
 content_path = "./supabase/templates/invite_email.html"
 
 [auth.email.template.confirmation]
-subject = "Confirm Your Email — GCU'73 Portal"
+subject = "Confirm Your Email — Government College Umuahia Portal"
 content_path = "./supabase/templates/confirmation_email.html"
 
 [auth.email.template.magic_link]
-subject = "Your Login Code — GCU'73 Portal"
+subject = "Your Login Code — Government College Umuahia Portal"
 content_path = "./supabase/templates/otp_email.html"
 
 [auth.sms]

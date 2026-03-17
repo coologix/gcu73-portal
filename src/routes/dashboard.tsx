@@ -213,8 +213,7 @@ export default function DashboardPage() {
               <div className="space-y-1">
                 <h2 className="text-sm font-semibold text-gcu-maroon-dark">Available Forms</h2>
                 <p className="text-xs text-gcu-brown">
-                  Every signed-in member can open any active form. Invitation links still work
-                  and are reconciled automatically when you submit.
+                  Choose a form below to get started with your submission.
                 </p>
               </div>
               {availableForms.map((form) => (
@@ -247,8 +246,8 @@ export default function DashboardPage() {
                       </div>
                       <p className="mt-1 text-xs text-gcu-brown">
                         {form.pendingInvitation
-                          ? 'You were invited to this form, but you can open it directly from your dashboard.'
-                          : form.description?.trim() || 'Open to every signed-in member.'}
+                          ? 'You were invited to complete this form.'
+                          : form.description?.trim() || 'Complete this form to share your details.'}
                       </p>
                     </div>
                   </div>

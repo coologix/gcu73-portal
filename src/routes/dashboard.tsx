@@ -30,8 +30,8 @@ interface SubmissionWithForm extends Submission {
   form?: Form | null
 }
 
-interface InvitationWithForm extends Invitation {
-  form?: Form | null
+interface AvailableForm extends Form {
+  pendingInvitation?: Invitation | null
 }
 
 const statusConfig: Record<
@@ -67,7 +67,7 @@ export default function DashboardPage() {
   const { user, profile, isAdmin, signOut } = useAuth()
 
   const [submissions, setSubmissions] = useState<SubmissionWithForm[]>([])
-  const [pendingInvitations, setPendingInvitations] = useState<InvitationWithForm[]>([])
+  const [availableForms, setAvailableForms] = useState<AvailableForm[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -85,14 +85,15 @@ export default function DashboardPage() {
 
         if (subsError) throw new Error(subsError.message)
         const nextSubmissions = subs ?? []
+        const submissionFormIds = [...new Set(nextSubmissions.map((submission) => submission.form_id))]
+        const submittedFormIds = new Set(submissionFormIds)
 
         // Fetch related forms
         if (nextSubmissions.length > 0) {
-          const formIds = [...new Set(nextSubmissions.map((s) => s.form_id))]
           const { data: forms } = await supabase
             .from('forms')
             .select('*')
-            .in('id', formIds)
+            .in('id', submissionFormIds)
 
           const formMap = new Map(forms?.map((f) => [f.id, f]) ?? [])
 
@@ -106,33 +107,41 @@ export default function DashboardPage() {
           setSubmissions([])
         }
 
-        // Also fetch pending invitations — exclude forms already submitted
-        const submittedFormIds = new Set(nextSubmissions.map((submission) => submission.form_id))
-        const { data: invites } = await supabase
-          .from('invitations')
+        const { data: activeForms, error: activeFormsError } = await supabase
+          .from('forms')
           .select('*')
-          .eq('email', user!.email ?? '')
-          .eq('status', 'pending')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
 
-        if (invites && invites.length > 0) {
-          // Filter out invitations for forms the user already submitted
-          const pendingInvites = invites.filter(i => !submittedFormIds.has(i.form_id))
+        if (activeFormsError) throw new Error(activeFormsError.message)
 
-          const invFormIds = [...new Set(pendingInvites.map(i => i.form_id))]
-          if (invFormIds.length === 0) {
-            setPendingInvitations([])
-          } else {
-            const { data: invForms } = await supabase
-              .from('forms')
-              .select('*')
-              .in('id', invFormIds)
+        let pendingInvites: Invitation[] = []
+        if (user.email) {
+          const { data: invites, error: invitesError } = await supabase
+            .from('invitations')
+            .select('*')
+            .eq('email', user.email)
+            .eq('status', 'pending')
 
-            const invFormMap = new Map(invForms?.map(f => [f.id, f]) ?? [])
-            setPendingInvitations(
-              pendingInvites.map(i => ({ ...i, form: invFormMap.get(i.form_id) ?? null }))
-            )
+          if (invitesError) throw new Error(invitesError.message)
+          pendingInvites = invites ?? []
+        }
+
+        const pendingInviteMap = new Map<string, Invitation>()
+        for (const invitation of pendingInvites) {
+          if (!submittedFormIds.has(invitation.form_id) && !pendingInviteMap.has(invitation.form_id)) {
+            pendingInviteMap.set(invitation.form_id, invitation)
           }
         }
+
+        setAvailableForms(
+          (activeForms ?? [])
+            .filter((form) => !submittedFormIds.has(form.id))
+            .map((form) => ({
+              ...form,
+              pendingInvitation: pendingInviteMap.get(form.id) ?? null,
+            })),
+        )
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : 'Failed to load submissions',
@@ -197,31 +206,56 @@ export default function DashboardPage() {
         animate="visible"
         variants={stagger}
       >
-        {/* Pending invitations */}
-        {pendingInvitations.length > 0 && (
+        {/* Available forms */}
+        {availableForms.length > 0 && (
           <motion.div variants={fadeUp} custom={0}>
             <div className="mb-6 space-y-3">
-              <h2 className="text-sm font-semibold text-gcu-maroon-dark">Pending Forms</h2>
-              {pendingInvitations.map((inv) => (
+              <div className="space-y-1">
+                <h2 className="text-sm font-semibold text-gcu-maroon-dark">Available Forms</h2>
+                <p className="text-xs text-gcu-brown">
+                  Every signed-in member can open any active form. Invitation links still work
+                  and are reconciled automatically when you submit.
+                </p>
+              </div>
+              {availableForms.map((form) => (
                 <Link
-                  key={inv.id}
-                  to={`/form/${inv.form?.slug ?? ''}?inviteToken=${inv.token}`}
-                  className="flex items-center justify-between rounded-lg border border-gcu-gold/30 bg-gcu-cream-dark p-4 transition-all hover:shadow-md hover:shadow-gcu-maroon/5"
+                  key={form.id}
+                  to={
+                    form.pendingInvitation
+                      ? `/form/${form.slug}?inviteToken=${form.pendingInvitation.token}`
+                      : `/form/${form.slug}`
+                  }
+                  className="group flex flex-col gap-4 rounded-lg border border-gcu-gold/30 bg-gcu-cream-dark p-4 transition-all hover:shadow-md hover:shadow-gcu-maroon/5 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-gcu-maroon/10">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gcu-maroon/10">
                       <FileText className="size-5 text-gcu-maroon" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gcu-maroon-dark">
-                        {inv.form?.title ?? 'Form'}
-                      </p>
-                      <p className="text-xs text-gcu-brown">
-                        You have been invited to submit your details
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-gcu-maroon-dark">
+                          {form.title}
+                        </p>
+                        {form.pendingInvitation && (
+                          <Badge
+                            variant="outline"
+                            className="border-gcu-gold/50 bg-white text-gcu-brown"
+                          >
+                            Invited
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-gcu-brown">
+                        {form.pendingInvitation
+                          ? 'You were invited to this form, but you can open it directly from your dashboard.'
+                          : form.description?.trim() || 'Open to every signed-in member.'}
                       </p>
                     </div>
                   </div>
-                  <ArrowRight className="size-4 text-gcu-brown" />
+                  <div className="flex shrink-0 items-center gap-1 self-end text-xs font-medium text-gcu-maroon sm:min-w-[92px] sm:justify-end sm:self-center sm:pl-4">
+                    <span className="whitespace-nowrap">Start form</span>
+                    <ArrowRight className="size-4 text-gcu-brown transition-transform group-hover:translate-x-0.5" />
+                  </div>
                 </Link>
               ))}
             </div>
@@ -261,18 +295,18 @@ export default function DashboardPage() {
         )}
 
         {/* Empty state */}
-        {!isLoading && submissions.length === 0 && (
+        {!isLoading && submissions.length === 0 && availableForms.length === 0 && (
           <motion.div variants={fadeUp} custom={0}>
             <div className="rounded-xl border border-gcu-cream-dark bg-gcu-cream-dark/50 py-20 text-center">
               <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-gcu-cream-dark">
                 <Inbox className="size-8 text-gcu-brown" />
               </div>
               <h2 className="mt-6 text-lg font-semibold text-gcu-maroon-dark">
-                No submissions yet
+                No active forms right now
               </h2>
               <p className="mx-auto mt-2 max-w-sm text-sm text-gcu-brown">
-                You haven&apos;t submitted any forms yet. If you received an
-                invitation, please use the link in your email to get started.
+                There are no active forms available at the moment. Check back later or
+                contact an administrator if you expected to see one here.
               </p>
               <Link
                 to="/"

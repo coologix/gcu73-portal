@@ -31,9 +31,9 @@ const steps = [
   {
     icon: Mail,
     step: '01',
-    title: 'Receive Your Invitation',
+    title: 'Sign In With Email',
     description:
-      'Use the invitation link sent to your email, or enter your email address to get started.',
+      'Enter your email to receive a secure one-time code, or use an invitation link if one was shared with you.',
   },
   {
     icon: ClipboardList,
@@ -123,8 +123,8 @@ export default function HomePage() {
             custom={2}
             className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-gcu-brown sm:text-lg"
           >
-            Submit your personal details securely for enrollment in the
-            Group Life Insurance programme.
+            Sign in to access the active insurance forms and submit your personal
+            details securely for enrollment in the Group Life Insurance programme.
           </motion.p>
 
           {/* Patrick Mbano credit */}

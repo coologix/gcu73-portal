@@ -1,9 +1,11 @@
-import { useState, useRef, useCallback } from 'react'
-import { Upload, X, Loader2 } from 'lucide-react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { Upload, X, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
+import { useInlineImagePreview } from '@/hooks/use-inline-image-preview'
+import { normalizeUploadedImage } from '@/lib/media-files'
 
 interface MediaUploadProps {
   fieldId: string
@@ -17,15 +19,29 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string>(value || '')
+  const [previewNotice, setPreviewNotice] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const {
+    previewUrl: inlinePreviewUrl,
+    isLoading: isResolvingPreview,
+    error: previewError,
+    isHeic,
+  } = useInlineImagePreview(previewUrl)
+
+  useEffect(() => {
+    setPreviewUrl(value || '')
+  }, [value])
 
   const uploadFile = useCallback(
     async (file: File) => {
       setUploading(true)
       setUploadProgress(0)
+      setUploadError(null)
 
       try {
-        const ext = file.name.split('.').pop() ?? 'jpg'
+        const { file: normalizedFile, converted } = await normalizeUploadedImage(file)
+        const ext = normalizedFile.name.split('.').pop() ?? 'jpg'
         const userId = user?.id ?? 'anonymous'
         const fileName = `${userId}/${fieldId}/${Date.now()}.${ext}`
 
@@ -36,7 +52,7 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
 
         const { data, error: uploadError } = await supabase.storage
           .from('submissions')
-          .upload(fileName, file, {
+          .upload(fileName, normalizedFile, {
             cacheControl: '3600',
             upsert: false,
           })
@@ -50,11 +66,21 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
           .getPublicUrl(data.path)
 
         setUploadProgress(100)
+        setPreviewNotice(
+          converted
+            ? `${file.name} was converted to JPEG so it previews correctly in browsers.`
+            : null,
+        )
         setPreviewUrl(urlData.publicUrl)
         onChange(urlData.publicUrl)
       } catch (err) {
         console.error('Upload failed:', err)
         setUploadProgress(0)
+        setUploadError(
+          err instanceof Error
+            ? err.message
+            : 'Upload failed. Please try another image.',
+        )
       } finally {
         setUploading(false)
       }
@@ -76,6 +102,8 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
 
   const clearUpload = useCallback(() => {
     setPreviewUrl('')
+    setPreviewNotice(null)
+    setUploadError(null)
     onChange('')
     setUploadProgress(0)
   }, [onChange])
@@ -115,15 +143,57 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
           <div className="p-4 sm:p-5">
             <div className="mx-auto w-full max-w-[18rem] overflow-hidden rounded-[1.25rem] border border-gcu-cream-dark bg-white shadow-inner">
               <div className="aspect-[3/4] w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(246,239,232,0.8)_55%,_rgba(236,225,215,0.9))] p-3">
-                <img
-                  src={previewUrl}
-                  alt="Upload preview"
-                  className="h-full w-full rounded-2xl object-contain"
-                />
+                {inlinePreviewUrl ? (
+                  <img
+                    src={inlinePreviewUrl}
+                    alt="Upload preview"
+                    className="h-full w-full rounded-2xl object-contain"
+                  />
+                ) : isResolvingPreview ? (
+                  <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl bg-gcu-cream/60 px-4 text-center">
+                    <Loader2 className="size-5 animate-spin text-gcu-maroon" />
+                    <p className="mt-3 text-sm font-medium text-gcu-maroon-dark">
+                      Preparing preview...
+                    </p>
+                    <p className="mt-1 text-xs text-gcu-brown">
+                      HEIC photos are being converted for browser display.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl border border-dashed border-gcu-cream-dark bg-gcu-cream/60 px-4 text-center">
+                    <AlertCircle className="size-5 text-gcu-maroon" />
+                    <p className="mt-3 text-sm font-medium text-gcu-maroon-dark">
+                      Inline preview unavailable
+                    </p>
+                    <p className="mt-1 text-xs text-gcu-brown">
+                      {isHeic
+                        ? 'This HEIC image could not be rendered inline in this browser.'
+                        : 'This file uploaded successfully, but its preview is not available here.'}
+                    </p>
+                    <a
+                      href={previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 text-xs font-medium text-gcu-red underline underline-offset-4"
+                    >
+                      Open uploaded file
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="mt-4">
+              {previewNotice && (
+                <p className="mb-3 rounded-xl bg-gcu-cream px-3 py-2 text-xs text-gcu-brown">
+                  {previewNotice}
+                </p>
+              )}
+              {previewError && (
+                <p className="mb-3 rounded-xl bg-destructive/8 px-3 py-2 text-xs text-destructive">
+                  {previewError}
+                </p>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -166,14 +236,23 @@ export function MediaUpload({ fieldId, value, onChange, error }: MediaUploadProp
             <Upload className="size-5" />
             Choose File
           </Button>
+          <p className="mt-2 text-center text-xs text-gcu-brown">
+            JPG, PNG, WEBP, HEIC, and HEIF images are accepted.
+          </p>
         </div>
+      )}
+
+      {uploadError && (
+        <p className="rounded-xl bg-destructive/8 px-3 py-2 text-xs text-destructive">
+          {uploadError}
+        </p>
       )}
 
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         className="hidden"
         onChange={handleFileChange}
       />

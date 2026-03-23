@@ -49,12 +49,40 @@ export default function VerifyPage() {
     return () => clearInterval(timer)
   }, [cooldown])
 
-  function handleChange(index: number, value: string) {
-    if (!/^\d*$/.test(value)) return
+  function fillOtpFromDigits(startIndex: number, nextDigits: string) {
+    const digits = nextDigits.replace(/\D/g, '').slice(0, OTP_LENGTH - startIndex)
+    if (!digits) return
+
     const updated = [...otp]
-    updated[index] = value.slice(-1)
+    for (let offset = 0; offset < digits.length; offset += 1) {
+      updated[startIndex + offset] = digits[offset]
+    }
     setOtp(updated)
-    if (value && index < OTP_LENGTH - 1) {
+
+    const nextFocusIndex = Math.min(startIndex + digits.length, OTP_LENGTH - 1)
+    inputRefs.current[nextFocusIndex]?.focus()
+  }
+
+  function handleChange(index: number, value: string) {
+    if (value === '') {
+      const updated = [...otp]
+      updated[index] = ''
+      setOtp(updated)
+      return
+    }
+
+    const digits = value.replace(/\D/g, '')
+    if (!digits) return
+
+    if (digits.length > 1) {
+      fillOtpFromDigits(index, digits)
+      return
+    }
+
+    const updated = [...otp]
+    updated[index] = digits
+    setOtp(updated)
+    if (index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus()
     }
   }
@@ -65,17 +93,9 @@ export default function VerifyPage() {
     }
   }
 
-  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+  function handlePaste(index: number, e: React.ClipboardEvent<HTMLInputElement>) {
     e.preventDefault()
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH)
-    if (!pasted) return
-    const updated = [...otp]
-    for (let i = 0; i < pasted.length; i++) {
-      updated[i] = pasted[i]
-    }
-    setOtp(updated)
-    const focusIndex = Math.min(pasted.length, OTP_LENGTH - 1)
-    inputRefs.current[focusIndex]?.focus()
+    fillOtpFromDigits(index, e.clipboardData.getData('text'))
   }
 
   const handleVerify = useCallback(async () => {
@@ -114,7 +134,7 @@ export default function VerifyPage() {
         toast.error(error.message)
         return
       }
-      toast.success('New OTP sent!')
+      toast.success('New code sent. Previous codes will no longer work.')
       setCooldown(RESEND_COOLDOWN)
       setOtp(Array(OTP_LENGTH).fill(''))
       inputRefs.current[0]?.focus()
@@ -200,6 +220,10 @@ export default function VerifyPage() {
                   We sent a 6-digit code to{' '}
                   <span className="font-medium text-foreground">{email}</span>
                 </p>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  On mobile, you can paste the full code into any box. Each code stays valid
+                  for 1 hour.
+                </p>
               </div>
 
               {/* OTP Inputs */}
@@ -212,13 +236,18 @@ export default function VerifyPage() {
                     }}
                     type="text"
                     inputMode="numeric"
+                    pattern="[0-9]*"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleChange(i, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(i, e)}
-                    onPaste={i === 0 ? handlePaste : undefined}
+                    onPaste={(e) => handlePaste(i, e)}
+                    onFocus={(e) => e.target.select()}
                     className="size-12 text-center text-xl font-bold"
                     disabled={isLoading}
+                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                    enterKeyHint={i === OTP_LENGTH - 1 ? 'done' : 'next'}
+                    aria-label={`Digit ${i + 1} of ${OTP_LENGTH}`}
                     autoFocus={i === 0}
                   />
                 ))}

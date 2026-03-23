@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { SchoolLogo } from '@/components/shared/SchoolLogo'
+import { useInlineImagePreview } from '@/hooks/use-inline-image-preview'
 import {
   buildSubmissionPrintSections,
   formatPrintDate,
@@ -13,10 +14,123 @@ import {
   isImageUrl,
   resolveSubmissionPhotoField,
 } from '@/lib/submission-print'
+import type { SubmissionPrintItem } from '@/lib/submission-print'
 import type { Form, FormField, Submission, SubmissionValue } from '@/types/database'
 
 const APPLE_FONT_STACK =
   '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif'
+
+function PrintPhotoPreview({
+  url,
+  alt,
+}: {
+  url: string
+  alt: string
+}) {
+  const { previewUrl, isLoading } = useInlineImagePreview(url)
+
+  if (previewUrl) {
+    return (
+      <img
+        src={previewUrl}
+        alt={alt}
+        className="print-photo-image"
+      />
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center text-center text-[11px] font-medium uppercase tracking-[0.14em] text-[#8e8e93]">
+        Preparing photo
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center px-4 text-center">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8e8e93]">
+        Open original file
+      </p>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 text-[12px] font-medium text-gcu-maroon underline underline-offset-4"
+      >
+        View uploaded image
+      </a>
+    </div>
+  )
+}
+
+function PrintMediaItemPreview({
+  item,
+}: {
+  item: SubmissionPrintItem
+}) {
+  const fileUrl = item.fileUrl ?? ''
+  const canPreviewInline = Boolean(fileUrl) && isImageUrl(fileUrl)
+  const { previewUrl, isLoading } = useInlineImagePreview(
+    canPreviewInline ? fileUrl : null,
+  )
+
+  if (!item.fileUrl) {
+    return (
+      <p className="mt-1.5 text-[15px] italic text-[#8e8e93]">
+        —
+      </p>
+    )
+  }
+
+  if (!canPreviewInline) {
+    return (
+      <a
+        href={fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 inline-flex break-all text-sm font-medium text-gcu-maroon underline underline-offset-4"
+      >
+        {item.fileName ?? fileUrl}
+      </a>
+    )
+  }
+
+  if (previewUrl) {
+    return (
+      <div className="print-section-image-frame">
+        <div className="print-section-image-inner">
+          <img
+            src={previewUrl}
+            alt={item.field.label}
+            className="print-field-image"
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="print-section-image-frame">
+        <div className="print-section-image-inner flex items-center justify-center text-center text-[11px] font-medium uppercase tracking-[0.14em] text-[#8e8e93]">
+          Preparing image
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <a
+      href={fileUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 inline-flex break-all text-sm font-medium text-gcu-maroon underline underline-offset-4"
+    >
+      {item.fileName ?? fileUrl}
+    </a>
+  )
+}
 
 export default function SubmissionPrintPreviewPage() {
   const { submissionId, formId, id } = useParams<{
@@ -539,12 +653,11 @@ export default function SubmissionPrintPreviewPage() {
                 </div>
 
                 <div className="print-photo-frame">
-                  <div className="print-photo-inner">
-                    {photoField?.fileUrl ? (
-                      <img
-                        src={photoField.fileUrl}
+                <div className="print-photo-inner">
+                  {photoField?.fileUrl ? (
+                      <PrintPhotoPreview
+                        url={photoField.fileUrl}
                         alt={photoField.field.label}
-                        className="print-photo-image"
                       />
                     ) : (
                       <div className="text-center text-xs font-medium uppercase tracking-[0.18em] text-[#8e8e93]">
@@ -605,26 +718,7 @@ export default function SubmissionPrintPreviewPage() {
                             </p>
 
                             {item.fileUrl ? (
-                              isImageUrl(item.fileUrl) ? (
-                                <div className="print-section-image-frame">
-                                  <div className="print-section-image-inner">
-                                    <img
-                                      src={item.fileUrl}
-                                      alt={item.field.label}
-                                      className="print-field-image"
-                                    />
-                                  </div>
-                                </div>
-                              ) : (
-                                <a
-                                  href={item.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="mt-3 inline-flex break-all text-sm font-medium text-gcu-maroon underline underline-offset-4"
-                                >
-                                  {item.fileName ?? item.fileUrl}
-                                </a>
-                              )
+                              <PrintMediaItemPreview item={item} />
                             ) : item.displayValue ? (
                               <p className="mt-1.5 whitespace-pre-wrap break-words text-[16px] leading-7 text-[#111111]">
                                 {item.displayValue}

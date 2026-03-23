@@ -1,4 +1,8 @@
 import type { FormField, Submission, SubmissionValue } from '@/types/database'
+import {
+  isHeicLikeUrl,
+  isInlinePreviewableImageUrl,
+} from '@/lib/media-files'
 
 export interface SubmissionPrintItem {
   field: FormField
@@ -14,8 +18,6 @@ export interface SubmissionPrintSection {
   title: string
   items: SubmissionPrintItem[]
 }
-
-const IMAGE_EXTENSION_PATTERN = /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i
 
 const SECTION_TITLES: Record<SubmissionPrintSection['key'], string> = {
   identity: 'Identity',
@@ -54,12 +56,7 @@ export function getSubmissionStatusLabel(
 }
 
 export function isImageUrl(url: string): boolean {
-  try {
-    const pathname = new URL(url).pathname
-    return IMAGE_EXTENSION_PATTERN.test(pathname)
-  } catch {
-    return IMAGE_EXTENSION_PATTERN.test(url)
-  }
+  return isInlinePreviewableImageUrl(url) || isHeicLikeUrl(url)
 }
 
 function getSectionKey(

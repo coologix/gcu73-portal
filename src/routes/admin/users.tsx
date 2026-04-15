@@ -73,6 +73,40 @@ function formatJoinedDate(value: string): string {
   })
 }
 
+async function getFunctionErrorMessage(error: unknown): Promise<string> {
+  if (error && typeof error === 'object') {
+    const maybeResponse = 'context' in error ? error.context : null
+
+    if (maybeResponse instanceof Response) {
+      try {
+        const payload = await maybeResponse.clone().json() as {
+          error?: string
+          message?: string
+        }
+        if (typeof payload.error === 'string' && payload.error) {
+          return payload.error
+        }
+        if (typeof payload.message === 'string' && payload.message) {
+          return payload.message
+        }
+      } catch {
+        try {
+          const text = await maybeResponse.clone().text()
+          if (text) return text
+        } catch {
+          // Fall back to the error object's message below.
+        }
+      }
+    }
+
+    if ('message' in error && typeof error.message === 'string' && error.message) {
+      return error.message
+    }
+  }
+
+  return 'Request failed'
+}
+
 export default function UsersPage() {
   const { user: currentUser } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -137,7 +171,7 @@ export default function UsersPage() {
     })
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(await getFunctionErrorMessage(error))
     }
 
     if (data?.error) {
@@ -187,11 +221,20 @@ export default function UsersPage() {
 
     setRoleChangeTargetId(profile.id)
     try {
-      const data = await invokeManageAdminAccount({
-        action: 'set_role',
-        userId: profile.id,
-        role: nextRole,
-      })
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ role: nextRole })
+        .eq('id', profile.id)
+        .select('id')
+        .single()
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      if (!data?.id) {
+        throw new Error('Profile update did not complete')
+      }
 
       setProfiles((prev) =>
         prev.map((item) =>
@@ -199,8 +242,7 @@ export default function UsersPage() {
         ),
       )
       toast.success(
-        data?.message ??
-          `${profile.email} is now ${nextRole === 'admin' ? 'an admin' : 'a user'}`,
+        `${profile.email} is now ${nextRole === 'admin' ? 'an admin' : 'a user'}`,
       )
     } catch (err) {
       toast.error(

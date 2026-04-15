@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
+import { hasAdminAccess } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { QuickInviteDialog } from '@/components/admin/QuickInviteDialog'
 import {
@@ -100,7 +101,7 @@ export default function AdminDashboardPage() {
 
       const eligibleMembers =
         profilesRes.data?.filter(
-          (profile) => profile.role !== 'admin' || submittedUserIds.has(profile.id),
+          (profile) => !hasAdminAccess(profile.role) || submittedUserIds.has(profile.id),
         ) ?? []
 
       const totalMembers = eligibleMembers.length

@@ -15,7 +15,7 @@ type ManageAdminRequest =
   | {
       action: "set_role";
       userId: string;
-      role: "admin" | "user";
+      role: "admin" | "super_admin" | "user";
     };
 
 Deno.serve(async (req) => {
@@ -30,6 +30,9 @@ Deno.serve(async (req) => {
     });
 
   try {
+    const hasAdminAccess = (role?: string | null) =>
+      role === "admin" || role === "super_admin";
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -66,7 +69,7 @@ Deno.serve(async (req) => {
       .eq("id", caller.id)
       .single();
 
-    if (callerProfile?.role !== "admin") {
+    if (!hasAdminAccess(callerProfile?.role)) {
       return json({ error: "Admin access required" }, 403);
     }
 
@@ -113,17 +116,17 @@ Deno.serve(async (req) => {
         });
 
         const message = otpRes.ok
-          ? existingProfile.role === "admin"
+          ? hasAdminAccess(existingProfile.role)
             ? `Admin access already exists for ${normalizedEmail}. A login code was sent.`
             : `Admin access granted to ${normalizedEmail}. A login code was sent.`
-          : existingProfile.role === "admin"
+          : hasAdminAccess(existingProfile.role)
             ? `Admin access already exists for ${normalizedEmail}.`
             : `Admin access granted to ${normalizedEmail}.`;
 
         return json({
           success: true,
           message,
-          mode: existingProfile.role === "admin" ? "existing_admin" : "promoted_existing_user",
+          mode: hasAdminAccess(existingProfile.role) ? "existing_admin" : "promoted_existing_user",
         });
       }
 
@@ -165,11 +168,11 @@ Deno.serve(async (req) => {
         return json({ error: "userId is required" }, 400);
       }
 
-      if (body.role !== "admin" && body.role !== "user") {
-        return json({ error: "role must be admin or user" }, 400);
+      if (body.role !== "admin" && body.role !== "super_admin" && body.role !== "user") {
+        return json({ error: "role must be admin, super_admin, or user" }, 400);
       }
 
-      if (body.userId === caller.id && body.role !== "admin") {
+      if (body.userId === caller.id && !hasAdminAccess(body.role)) {
         return json({ error: "You cannot remove your own admin access" }, 400);
       }
 
@@ -194,7 +197,7 @@ Deno.serve(async (req) => {
 
       return json({
         success: true,
-        message: body.role === "admin"
+        message: hasAdminAccess(body.role)
           ? `${targetProfile.email} now has admin access`
           : `${targetProfile.email} no longer has admin access`,
       });

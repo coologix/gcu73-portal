@@ -24,10 +24,11 @@ interface PortalHeaderProps {
 }
 
 export function PortalHeader({ leading, className }: PortalHeaderProps) {
-  const { profile, signOut, user } = useAuth();
+  const { profile, signOut, user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
+  const signedInHome = isAdmin ? "/admin" : "/dashboard";
 
   const fetchUnreadCount = useCallback(async () => {
     if (!user) {
@@ -92,7 +93,7 @@ export function PortalHeader({ leading, className }: PortalHeaderProps) {
         <Button
           variant="ghost"
           className="gap-2 px-2 text-base font-bold tracking-tight text-gcu-maroon-dark hover:text-gcu-maroon"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate(signedInHome)}
         >
           <GraduationCap className="size-5 text-gcu-maroon" />
           GCU&apos;73 Portal
@@ -135,10 +136,17 @@ export function PortalHeader({ leading, className }: PortalHeaderProps) {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+            <DropdownMenuItem onClick={() => navigate(signedInHome)}>
               <LayoutDashboard className="mr-2 size-4" />
-              Dashboard
+              {isAdmin ? "Admin Panel" : "Dashboard"}
             </DropdownMenuItem>
+
+            {isAdmin && location.pathname !== "/dashboard" && (
+              <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                <User className="mr-2 size-4" />
+                Member Dashboard
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuItem onClick={() => navigate("/profile")}>
               <User className="mr-2 size-4" />

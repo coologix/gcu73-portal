@@ -18,6 +18,9 @@ Deno.serve(async (req) => {
     });
 
   try {
+    const hasAdminAccess = (role?: string | null) =>
+      role === "admin" || role === "super_admin";
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const siteUrl = Deno.env.get("SITE_URL") || "https://gcu73-portal.vercel.app";
@@ -49,7 +52,7 @@ Deno.serve(async (req) => {
       .eq("id", caller.id)
       .single();
 
-    if (profile?.role !== "admin") {
+    if (!hasAdminAccess(profile?.role)) {
       return json({ error: "Admin access required" }, 403);
     }
 

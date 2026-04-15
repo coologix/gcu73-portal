@@ -20,7 +20,7 @@ create table public.profiles (
   email      text        not null,
   full_name  text,
   role       text        not null default 'user'
-                         check (role in ('admin', 'user')),
+                         check (role in ('admin', 'super_admin', 'user')),
   avatar_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -209,7 +209,7 @@ as $$
     select 1
     from public.profiles
     where id = auth.uid()
-      and role = 'admin'
+      and role in ('admin', 'super_admin')
   );
 $$;
 

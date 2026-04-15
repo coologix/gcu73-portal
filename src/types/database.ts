@@ -30,7 +30,7 @@ export interface Profile {
   id: string
   email: string
   full_name: string | null
-  role: 'admin' | 'user'
+  role: 'admin' | 'super_admin' | 'user'
   avatar_url: string | null
   created_at: string
   updated_at: string
@@ -118,7 +118,7 @@ export interface Database {
       profiles: {
         Row: Profile
         Insert: Omit<Profile, 'created_at' | 'updated_at'> & {
-          role?: 'admin' | 'user'
+          role?: 'admin' | 'super_admin' | 'user'
           avatar_url?: string | null
           full_name?: string | null
           created_at?: string

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Loader2, Users as UsersIcon, Search, Trash2, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
+import { formatRoleLabel, hasAdminAccess } from '@/lib/roles'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -214,7 +215,7 @@ export default function UsersPage() {
   }
 
   async function handleRoleChange(profile: Profile, nextRole: Profile['role']) {
-    if (profile.id === currentUser?.id && nextRole !== 'admin') {
+    if (profile.id === currentUser?.id && !hasAdminAccess(nextRole)) {
       toast.error('You cannot remove your own admin access')
       return
     }
@@ -242,7 +243,7 @@ export default function UsersPage() {
         ),
       )
       toast.success(
-        `${profile.email} is now ${nextRole === 'admin' ? 'an admin' : 'a user'}`,
+        `${profile.email} is now ${hasAdminAccess(nextRole) ? 'an admin' : 'a user'}`,
       )
     } catch (err) {
       toast.error(
@@ -315,8 +316,8 @@ export default function UsersPage() {
     )
   })
 
-  const adminProfiles = filtered.filter((profile) => profile.role === 'admin')
-  const memberProfiles = filtered.filter((profile) => profile.role !== 'admin')
+  const adminProfiles = filtered.filter((profile) => hasAdminAccess(profile.role))
+  const memberProfiles = filtered.filter((profile) => !hasAdminAccess(profile.role))
 
   return (
     <motion.div
@@ -525,7 +526,9 @@ export default function UsersPage() {
                                 {profile.email}
                               </TableCell>
                               <TableCell>
-                                <Badge variant="default">admin</Badge>
+                                <Badge variant="default">
+                                  {formatRoleLabel(profile.role)}
+                                </Badge>
                               </TableCell>
                               <TableCell className="hidden sm:table-cell text-gcu-brown">
                                 {formatJoinedDate(profile.created_at)}

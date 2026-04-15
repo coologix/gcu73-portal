@@ -13,6 +13,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Profile, ProfileUpdate } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 import { ensureProfileForUser } from '@/lib/profiles'
+import { hasAdminAccess } from '@/lib/roles'
 
 interface AuthContextValue {
   user: User | null
@@ -162,7 +163,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [user],
   )
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = hasAdminAccess(profile?.role)
 
   const value = useMemo<AuthContextValue>(
     () => ({

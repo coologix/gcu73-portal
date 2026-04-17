@@ -95,6 +95,13 @@ export interface Invitation {
   created_at: string
 }
 
+export interface FormStart {
+  id: string
+  form_id: string
+  user_id: string
+  started_at: string
+}
+
 export interface Notification {
   id: string
   recipient_id: string
@@ -181,6 +188,14 @@ export interface Database {
         }
         Update: Partial<Omit<Invitation, 'id'>>
       }
+      form_starts: {
+        Row: FormStart
+        Insert: Omit<FormStart, 'id' | 'started_at'> & {
+          id?: string
+          started_at?: string
+        }
+        Update: Partial<Omit<FormStart, 'id'>>
+      }
       notifications: {
         Row: Notification
         Insert: Omit<Notification, 'id' | 'created_at' | 'is_read' | 'read_at'> & {
@@ -195,7 +210,17 @@ export interface Database {
     }
     Views: Record<string, never>
     Functions: {
+      get_pending_invitation_by_token: {
+        Args: {
+          target_token: string
+        }
+        Returns: Invitation[]
+      }
       is_admin: {
+        Args: Record<string, never>
+        Returns: boolean
+      }
+      is_super_admin: {
         Args: Record<string, never>
         Returns: boolean
       }
@@ -228,6 +253,7 @@ export type FormFieldInsert = TablesInsert<'form_fields'>
 export type SubmissionInsert = TablesInsert<'submissions'>
 export type SubmissionValueInsert = TablesInsert<'submission_values'>
 export type InvitationInsert = TablesInsert<'invitations'>
+export type FormStartInsert = TablesInsert<'form_starts'>
 export type NotificationInsert = TablesInsert<'notifications'>
 
 // Named update type aliases
@@ -237,4 +263,5 @@ export type FormFieldUpdate = TablesUpdate<'form_fields'>
 export type SubmissionUpdate = TablesUpdate<'submissions'>
 export type SubmissionValueUpdate = TablesUpdate<'submission_values'>
 export type InvitationUpdate = TablesUpdate<'invitations'>
+export type FormStartUpdate = TablesUpdate<'form_starts'>
 export type NotificationUpdate = TablesUpdate<'notifications'>

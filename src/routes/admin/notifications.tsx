@@ -4,7 +4,6 @@ import {
   Loader2,
   Bell,
   Send,
-  Search,
   CheckCircle2,
   Clock,
 } from 'lucide-react'

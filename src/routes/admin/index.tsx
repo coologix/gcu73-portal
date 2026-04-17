@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
-import { hasAdminAccess } from '@/lib/roles'
+import { fetchSuperAdminIdentitySets, normalizeEmail } from '@/lib/staff'
 import { cn } from '@/lib/utils'
 import { QuickInviteDialog } from '@/components/admin/QuickInviteDialog'
 import {
@@ -62,7 +62,7 @@ interface RecentSubmission {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, isSuperAdmin } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentSubmissions, setRecentSubmissions] = useState<RecentSubmission[]>([])
   const [forms, setForms] = useState<Form[]>([])
@@ -72,12 +72,14 @@ export default function AdminDashboardPage() {
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true)
     try {
+      const superAdminIdentitySets = await fetchSuperAdminIdentitySets(isSuperAdmin)
+
       const [profilesRes, submissionsRes, invitationsRes, formsRes] = await Promise.all([
         supabase.from('profiles').select('id, role'),
-        supabase.from('submissions').select('id, user_id, status', { count: 'exact' }),
+        supabase.from('submissions').select('id, user_id, status'),
         supabase
           .from('invitations')
-          .select('id', { count: 'exact', head: true })
+          .select('id, email')
           .eq('status', 'pending'),
         supabase
           .from('forms')
@@ -93,20 +95,28 @@ export default function AdminDashboardPage() {
 
       setForms(formsRes.data ?? [])
 
+      const metricProfiles = (profilesRes.data ?? []).filter(
+        (profile) => !superAdminIdentitySets.userIds.has(profile.id),
+      )
+      const metricSubmissions = (submissionsRes.data ?? []).filter(
+        (submission) => !superAdminIdentitySets.userIds.has(submission.user_id),
+      )
       const submittedUserIds = new Set(
-        submissionsRes.data
+        metricSubmissions
           ?.filter((submission) => submission.status === 'submitted')
           .map((submission) => submission.user_id) ?? [],
       )
 
       const eligibleMembers =
-        profilesRes.data?.filter(
-          (profile) => !hasAdminAccess(profile.role) || submittedUserIds.has(profile.id),
-        ) ?? []
+        metricProfiles.filter(
+          (profile) => profile.role !== 'admin' || submittedUserIds.has(profile.id),
+        )
 
       const totalMembers = eligibleMembers.length
-      const totalSubmissions = submissionsRes.count ?? 0
-      const pendingInvitations = invitationsRes.count ?? 0
+      const totalSubmissions = metricSubmissions.length
+      const pendingInvitations = (invitationsRes.data ?? []).filter(
+        (invitation) => !superAdminIdentitySets.emails.has(normalizeEmail(invitation.email)),
+      ).length
 
       const completedMemberCount = eligibleMembers.filter((profile) =>
         submittedUserIds.has(profile.id),
@@ -169,7 +179,7 @@ export default function AdminDashboardPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [isSuperAdmin])
 
   useEffect(() => {
     void fetchDashboardData()

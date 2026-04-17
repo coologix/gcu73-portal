@@ -39,42 +39,43 @@ export default function InvitePage() {
 
     async function validateToken() {
       try {
-        const { data, error } = await supabase
-          .from('invitations')
-          .select('*')
-          .eq('token', token)
-          .single()
+        const { data, error } = await supabase.rpc(
+          'get_pending_invitation_by_token',
+          { target_token: token },
+        )
 
-        if (error || !data) {
+        const invitationRow = data?.[0] ?? null
+
+        if (error || !invitationRow) {
           setStatus('invalid')
           return
         }
 
         // Check if expired
-        if (new Date(data.expires_at) < new Date()) {
+        if (new Date(invitationRow.expires_at) < new Date()) {
           setStatus('expired')
           return
         }
 
         // Check if already completed
-        if (data.status === 'completed') {
+        if (invitationRow.status === 'completed') {
           toast.info('This invitation has already been used.')
           setStatus('invalid')
           return
         }
 
-        if (data.status === 'cancelled') {
+        if (invitationRow.status === 'cancelled') {
           setStatus('invalid')
           return
         }
 
-        setInvitation(data)
+        setInvitation(invitationRow)
 
         // Fetch form details
         const { data: formData } = await supabase
           .from('forms')
           .select('*')
-          .eq('id', data.form_id)
+          .eq('id', invitationRow.form_id)
           .single()
 
         if (formData) {
@@ -84,7 +85,7 @@ export default function InvitePage() {
         setStatus('valid')
 
         // If user is already logged in and matches the invitation email, redirect
-        if (user?.email?.toLowerCase() === data.email.toLowerCase()) {
+        if (user?.email?.toLowerCase() === invitationRow.email.toLowerCase()) {
           navigate('/dashboard', { replace: true })
         }
       } catch {

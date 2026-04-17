@@ -4,6 +4,7 @@ import type { Profile } from '@/types/database'
 interface UseProfileReturn {
   profile: Profile | null
   isAdmin: boolean
+  isSuperAdmin: boolean
   loading: boolean
 }
 
@@ -12,6 +13,6 @@ interface UseProfileReturn {
  * Must be rendered inside an `<AuthProvider>`.
  */
 export function useProfile(): UseProfileReturn {
-  const { profile, isAdmin, loading } = useAuth()
-  return { profile, isAdmin, loading }
+  const { profile, isAdmin, isSuperAdmin, loading } = useAuth()
+  return { profile, isAdmin, isSuperAdmin, loading }
 }

@@ -6,16 +6,20 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+type ProfileRole = "user" | "admin" | "super_admin";
+type StaffRole = Exclude<ProfileRole, "user">;
+
 type ManageAdminRequest =
   | {
       action: "invite_admin";
       email: string;
       fullName?: string | null;
+      role?: StaffRole;
     }
   | {
       action: "set_role";
       userId: string;
-      role: "admin" | "super_admin" | "user";
+      role: ProfileRole;
     };
 
 Deno.serve(async (req) => {
@@ -30,9 +34,6 @@ Deno.serve(async (req) => {
     });
 
   try {
-    const hasAdminAccess = (role?: string | null) =>
-      role === "admin" || role === "super_admin";
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -63,13 +64,21 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: callerProfile } = await adminClient
+    const { data: callerProfile, error: callerProfileError } = await adminClient
       .from("profiles")
       .select("role")
       .eq("id", caller.id)
       .single();
 
-    if (!hasAdminAccess(callerProfile?.role)) {
+    if (callerProfileError || !callerProfile) {
+      return json({ error: callerProfileError?.message ?? "Admin access required" }, 403);
+    }
+
+    const callerRole = callerProfile.role as ProfileRole;
+    const callerIsAdmin = callerRole === "admin" || callerRole === "super_admin";
+    const callerIsSuperAdmin = callerRole === "super_admin";
+
+    if (!callerIsAdmin) {
       return json({ error: "Admin access required" }, 403);
     }
 
@@ -78,9 +87,14 @@ Deno.serve(async (req) => {
     if (body.action === "invite_admin") {
       const normalizedEmail = body.email.trim().toLowerCase();
       const normalizedName = body.fullName?.trim() || null;
+      const targetRole: StaffRole = body.role === "super_admin" ? "super_admin" : "admin";
 
       if (!normalizedEmail) {
         return json({ error: "Email is required" }, 400);
+      }
+
+      if (targetRole === "super_admin" && !callerIsSuperAdmin) {
+        return json({ error: "Super admin access required" }, 403);
       }
 
       const { data: existingProfile, error: existingProfileError } = await adminClient
@@ -93,11 +107,17 @@ Deno.serve(async (req) => {
         return json({ error: existingProfileError.message }, 500);
       }
 
+      const existingRole = existingProfile?.role as ProfileRole | undefined;
+
+      if (existingRole === "super_admin" && !callerIsSuperAdmin) {
+        return json({ error: "User not found" }, 404);
+      }
+
       if (existingProfile) {
         const { error: updateExistingError } = await adminClient
           .from("profiles")
           .update({
-            role: "admin",
+            role: targetRole,
             full_name: normalizedName ?? existingProfile.full_name,
           })
           .eq("id", existingProfile.id);
@@ -115,18 +135,20 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ email: normalizedEmail }),
         });
 
+        const accessLabel = targetRole === "super_admin" ? "Super admin access" : "Admin access";
+        const alreadyHasRole = existingRole === targetRole;
         const message = otpRes.ok
-          ? hasAdminAccess(existingProfile.role)
-            ? `Admin access already exists for ${normalizedEmail}. A login code was sent.`
-            : `Admin access granted to ${normalizedEmail}. A login code was sent.`
-          : hasAdminAccess(existingProfile.role)
-            ? `Admin access already exists for ${normalizedEmail}.`
-            : `Admin access granted to ${normalizedEmail}.`;
+          ? alreadyHasRole
+            ? `${accessLabel} already exists for ${normalizedEmail}. A login code was sent.`
+            : `${accessLabel} granted to ${normalizedEmail}. A login code was sent.`
+          : alreadyHasRole
+            ? `${accessLabel} already exists for ${normalizedEmail}.`
+            : `${accessLabel} granted to ${normalizedEmail}.`;
 
         return json({
           success: true,
           message,
-          mode: hasAdminAccess(existingProfile.role) ? "existing_admin" : "promoted_existing_user",
+          mode: alreadyHasRole ? "existing_staff" : "promoted_existing_user",
         });
       }
 
@@ -148,7 +170,7 @@ Deno.serve(async (req) => {
             id: invitedUserId,
             email: normalizedEmail,
             full_name: normalizedName,
-            role: "admin",
+            role: targetRole,
           });
 
         if (upsertError) {
@@ -158,8 +180,11 @@ Deno.serve(async (req) => {
 
       return json({
         success: true,
-        message: `Admin invitation sent to ${normalizedEmail}`,
-        mode: "invited_new_admin",
+        message:
+          targetRole === "super_admin"
+            ? `Super admin invitation sent to ${normalizedEmail}`
+            : `Admin invitation sent to ${normalizedEmail}`,
+        mode: "invited_new_staff",
       });
     }
 
@@ -168,12 +193,8 @@ Deno.serve(async (req) => {
         return json({ error: "userId is required" }, 400);
       }
 
-      if (body.role !== "admin" && body.role !== "super_admin" && body.role !== "user") {
-        return json({ error: "role must be admin, super_admin, or user" }, 400);
-      }
-
-      if (body.userId === caller.id && !hasAdminAccess(body.role)) {
-        return json({ error: "You cannot remove your own admin access" }, 400);
+      if (!["user", "admin", "super_admin"].includes(body.role)) {
+        return json({ error: "role must be user, admin, or super_admin" }, 400);
       }
 
       const { data: targetProfile, error: targetProfileError } = await adminClient
@@ -186,6 +207,20 @@ Deno.serve(async (req) => {
         return json({ error: targetProfileError?.message ?? "User not found" }, 404);
       }
 
+      const targetRole = targetProfile.role as ProfileRole;
+
+      if (targetRole === "super_admin" && !callerIsSuperAdmin) {
+        return json({ error: "User not found" }, 404);
+      }
+
+      if (body.role === "super_admin" && !callerIsSuperAdmin) {
+        return json({ error: "Super admin access required" }, 403);
+      }
+
+      if (body.userId === caller.id && body.role !== callerRole) {
+        return json({ error: "You cannot change your own staff role" }, 400);
+      }
+
       const { error: roleUpdateError } = await adminClient
         .from("profiles")
         .update({ role: body.role })
@@ -195,11 +230,15 @@ Deno.serve(async (req) => {
         return json({ error: roleUpdateError.message }, 500);
       }
 
+      const nextRoleLabel = body.role === "super_admin"
+        ? "super admin"
+        : body.role === "admin"
+          ? "admin"
+          : "user";
+
       return json({
         success: true,
-        message: hasAdminAccess(body.role)
-          ? `${targetProfile.email} now has admin access`
-          : `${targetProfile.email} no longer has admin access`,
+        message: `${targetProfile.email} is now ${nextRoleLabel}`,
       });
     }
 

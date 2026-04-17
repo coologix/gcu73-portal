@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { Loader2, Users as UsersIcon, Search, Trash2, Plus } from 'lucide-react'
+import { Loader2, Users as UsersIcon, Search, Trash2, Plus, Shield } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
-import { formatRoleLabel, hasAdminAccess } from '@/lib/roles'
+import { getRoleLabel } from '@/lib/staff'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,8 @@ const fadeUp = {
   },
 }
 
+type StaffInviteRole = Extract<Profile['role'], 'admin' | 'super_admin'>
+
 function getInitials(name: string | null): string {
   const source = name?.trim()
   if (!source) return '?'
@@ -74,50 +76,194 @@ function formatJoinedDate(value: string): string {
   })
 }
 
-async function getFunctionErrorMessage(error: unknown): Promise<string> {
-  if (error && typeof error === 'object') {
-    const maybeResponse = 'context' in error ? error.context : null
+interface ProfileSectionProps {
+  title: string
+  description: string
+  profiles: Profile[]
+  emptyState: string
+  currentUserId?: string
+  roleChangeTargetId: string | null
+  canPromoteToSuperAdmin: boolean
+  onRoleChange: (profile: Profile, nextRole: Profile['role']) => void
+  onDelete: (profile: Profile) => void
+}
 
-    if (maybeResponse instanceof Response) {
-      try {
-        const payload = await maybeResponse.clone().json() as {
-          error?: string
-          message?: string
-        }
-        if (typeof payload.error === 'string' && payload.error) {
-          return payload.error
-        }
-        if (typeof payload.message === 'string' && payload.message) {
-          return payload.message
-        }
-      } catch {
-        try {
-          const text = await maybeResponse.clone().text()
-          if (text) return text
-        } catch {
-          // Fall back to the error object's message below.
-        }
-      }
-    }
+function ProfileSection({
+  title,
+  description,
+  profiles,
+  emptyState,
+  currentUserId,
+  roleChangeTargetId,
+  canPromoteToSuperAdmin,
+  onRoleChange,
+  onDelete,
+}: ProfileSectionProps) {
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gcu-maroon-dark">
+            {title}
+          </h2>
+          <p className="text-sm text-gcu-brown">{description}</p>
+        </div>
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-gcu-brown/70">
+          {profiles.length} account{profiles.length !== 1 ? 's' : ''}
+        </p>
+      </div>
 
-    if ('message' in error && typeof error.message === 'string' && error.message) {
-      return error.message
-    }
-  }
+      <Card>
+        <CardContent className="p-0">
+          {profiles.length === 0 ? (
+            <div className="py-12 text-center text-sm text-gcu-brown">
+              {emptyState}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead className="hidden sm:table-cell">Email</TableHead>
+                    <TableHead>Access</TableHead>
+                    <TableHead className="hidden sm:table-cell">Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {profiles.map((profile) => {
+                    const isSelf = profile.id === currentUserId
+                    const isWorking = roleChangeTargetId === profile.id
 
-  return 'Request failed'
+                    return (
+                      <TableRow key={profile.id} className="transition-colors hover:bg-gcu-cream/50">
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="size-8">
+                              <AvatarImage
+                                src={profile.avatar_url ?? undefined}
+                                alt={profile.full_name ?? profile.email}
+                              />
+                              <AvatarFallback className="text-xs bg-gcu-cream-dark text-gcu-maroon">
+                                {profile.full_name
+                                  ? getInitials(profile.full_name)
+                                  : getEmailInitials(profile.email)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-gcu-maroon-dark">
+                                {profile.full_name ?? 'No name set'}
+                              </p>
+                              {!profile.full_name && (
+                                <p className="text-xs text-gcu-brown">
+                                  Name not set on profile
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-gcu-brown">
+                          {profile.email}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={profile.role === 'super_admin' ? 'outline' : 'default'}>
+                            {getRoleLabel(profile.role)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-gcu-brown">
+                          {formatJoinedDate(profile.created_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-wrap items-center justify-end gap-1">
+                            {!isSelf && profile.role === 'super_admin' && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+                                disabled={isWorking}
+                                onClick={() => onRoleChange(profile, 'admin')}
+                              >
+                                {isWorking ? <Loader2 className="size-4 animate-spin" /> : 'Demote'}
+                              </Button>
+                            )}
+
+                            {!isSelf && profile.role === 'admin' && canPromoteToSuperAdmin && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="border-gcu-gold/40 text-gcu-maroon hover:bg-gcu-cream-dark"
+                                disabled={isWorking}
+                                onClick={() => onRoleChange(profile, 'super_admin')}
+                              >
+                                {isWorking ? <Loader2 className="size-4 animate-spin" /> : 'Promote'}
+                              </Button>
+                            )}
+
+                            {!isSelf && profile.role === 'admin' && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+                                disabled={isWorking}
+                                onClick={() => onRoleChange(profile, 'user')}
+                              >
+                                {isWorking ? <Loader2 className="size-4 animate-spin" /> : 'Demote'}
+                              </Button>
+                            )}
+
+                            {!isSelf && profile.role === 'user' && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
+                                disabled={isWorking}
+                                onClick={() => onRoleChange(profile, 'admin')}
+                              >
+                                {isWorking ? <Loader2 className="size-4 animate-spin" /> : 'Make admin'}
+                              </Button>
+                            )}
+
+                            {!isSelf && (
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() => onDelete(profile)}
+                                title={`Delete ${profile.full_name || profile.email}`}
+                              >
+                                <Trash2 className="size-3.5 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  )
 }
 
 export default function UsersPage() {
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, isSuperAdmin } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [newAdminName, setNewAdminName] = useState('')
-  const [newAdminEmail, setNewAdminEmail] = useState('')
-  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
+  const [newStaffName, setNewStaffName] = useState('')
+  const [newStaffEmail, setNewStaffEmail] = useState('')
+  const [newStaffRole, setNewStaffRole] = useState<StaffInviteRole>('admin')
+  const [isCreatingStaff, setIsCreatingStaff] = useState(false)
   const [roleChangeTargetId, setRoleChangeTargetId] = useState<string | null>(null)
 
   async function fetchProfiles() {
@@ -149,6 +295,7 @@ export default function UsersPage() {
           action: 'invite_admin'
           email: string
           fullName?: string | null
+          role?: StaffInviteRole
         }
       | {
           action: 'set_role'
@@ -172,7 +319,7 @@ export default function UsersPage() {
     })
 
     if (error) {
-      throw new Error(await getFunctionErrorMessage(error))
+      throw new Error(error.message)
     }
 
     if (data?.error) {
@@ -182,60 +329,53 @@ export default function UsersPage() {
     return data
   }
 
-  async function handleCreateAdmin() {
-    const email = newAdminEmail.trim().toLowerCase()
-    const fullName = newAdminName.trim()
+  async function handleCreateStaffAccount() {
+    const email = newStaffEmail.trim().toLowerCase()
+    const fullName = newStaffName.trim()
 
     if (!email) {
-      toast.error('Enter an email address for the admin account')
+      toast.error(`Enter an email address for the ${getRoleLabel(newStaffRole)} account`)
       return
     }
 
-    setIsCreatingAdmin(true)
+    setIsCreatingStaff(true)
     try {
       const data = await invokeManageAdminAccount({
         action: 'invite_admin',
         email,
         fullName: fullName || null,
+        role: newStaffRole,
       })
 
       toast.success(
-        data?.message ?? `Admin access created for ${email}`,
+        data?.message ?? `${getRoleLabel(newStaffRole)} access created for ${email}`,
       )
-      setNewAdminEmail('')
-      setNewAdminName('')
+      setNewStaffEmail('')
+      setNewStaffName('')
+      setNewStaffRole('admin')
       void fetchProfiles()
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to create admin account',
+        err instanceof Error ? err.message : 'Failed to create staff account',
       )
     } finally {
-      setIsCreatingAdmin(false)
+      setIsCreatingStaff(false)
     }
   }
 
   async function handleRoleChange(profile: Profile, nextRole: Profile['role']) {
-    if (profile.id === currentUser?.id && !hasAdminAccess(nextRole)) {
-      toast.error('You cannot remove your own admin access')
+    if (profile.id === currentUser?.id && nextRole !== profile.role) {
+      toast.error('You cannot change your own staff role from this screen')
       return
     }
 
     setRoleChangeTargetId(profile.id)
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ role: nextRole })
-        .eq('id', profile.id)
-        .select('id')
-        .single()
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      if (!data?.id) {
-        throw new Error('Profile update did not complete')
-      }
+      const data = await invokeManageAdminAccount({
+        action: 'set_role',
+        userId: profile.id,
+        role: nextRole,
+      })
 
       setProfiles((prev) =>
         prev.map((item) =>
@@ -243,7 +383,8 @@ export default function UsersPage() {
         ),
       )
       toast.success(
-        `${profile.email} is now ${hasAdminAccess(nextRole) ? 'an admin' : 'a user'}`,
+        data?.message ??
+          `${profile.email} is now ${getRoleLabel(nextRole)}`,
       )
     } catch (err) {
       toast.error(
@@ -259,33 +400,34 @@ export default function UsersPage() {
     setIsDeleting(true)
 
     try {
-      // 1. Delete all submission_values for this user's submissions
       const { data: subs } = await supabase
         .from('submissions')
         .select('id')
         .eq('user_id', deleteTarget.id)
 
       if (subs && subs.length > 0) {
-        const subIds = subs.map((s) => s.id)
+        const subIds = subs.map((submission) => submission.id)
         await supabase
           .from('submission_values')
           .delete()
           .in('submission_id', subIds)
 
-        // 2. Delete all submissions
         await supabase
           .from('submissions')
           .delete()
           .eq('user_id', deleteTarget.id)
       }
 
-      // 3. Delete notifications for this user
       await supabase
         .from('notifications')
         .delete()
-        .eq('recipient_id', deleteTarget.id)
+        .or(`recipient_id.eq.${deleteTarget.id},sender_id.eq.${deleteTarget.id}`)
 
-      // 4. Delete the profile
+      await supabase
+        .from('form_starts')
+        .delete()
+        .eq('user_id', deleteTarget.id)
+
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
@@ -293,9 +435,7 @@ export default function UsersPage() {
 
       if (profileError) throw new Error(profileError.message)
 
-      // 5. Delete the auth user via admin API (requires service role - done via edge function or manual)
-      // For now, just remove from the UI
-      setProfiles((prev) => prev.filter((p) => p.id !== deleteTarget.id))
+      setProfiles((prev) => prev.filter((profile) => profile.id !== deleteTarget.id))
       toast.success(`${deleteTarget.full_name || deleteTarget.email} and their submissions have been deleted`)
     } catch (err) {
       toast.error(
@@ -307,17 +447,21 @@ export default function UsersPage() {
     }
   }
 
-  const filtered = profiles.filter((p) => {
+  const filtered = profiles.filter((profile) => {
     if (!search) return true
     const q = search.toLowerCase()
     return (
-      p.email.toLowerCase().includes(q) ||
-      (p.full_name?.toLowerCase().includes(q) ?? false)
+      profile.email.toLowerCase().includes(q) ||
+      (profile.full_name?.toLowerCase().includes(q) ?? false)
     )
   })
 
-  const adminProfiles = filtered.filter((profile) => hasAdminAccess(profile.role))
-  const memberProfiles = filtered.filter((profile) => !hasAdminAccess(profile.role))
+  const superAdminProfiles = filtered.filter((profile) => profile.role === 'super_admin')
+  const adminProfiles = filtered.filter((profile) => profile.role === 'admin')
+  const memberProfiles = filtered.filter((profile) => profile.role === 'user')
+
+  const totalVisibleProfiles =
+    superAdminProfiles.length + adminProfiles.length + memberProfiles.length
 
   return (
     <motion.div
@@ -332,7 +476,7 @@ export default function UsersPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-gcu-maroon-dark">Users</h1>
         <p className="text-sm text-gcu-brown">
-          Manage administrator accounts and review non-admin signup details
+          Manage administrator accounts and review non-admin signup details.
         </p>
       </div>
 
@@ -351,42 +495,68 @@ export default function UsersPage() {
         <CardContent className="space-y-4 p-5">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-gcu-maroon-dark">
-              Create Admin Account
+              {isSuperAdmin ? 'Create Staff Account' : 'Create Admin Account'}
             </h2>
             <p className="text-sm text-gcu-brown">
-              Invite a new admin by email, or upgrade an existing account if that
-              email is already registered.
+              {isSuperAdmin
+                ? 'Invite a new admin or super admin, or upgrade an existing account.'
+                : 'Invite a new admin by email, or upgrade an existing account if that email is already registered.'}
             </p>
           </div>
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr),minmax(0,1.2fr),auto] lg:items-end">
+
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr),minmax(0,1.2fr),minmax(0,0.9fr),auto] lg:items-end">
             <div className="space-y-2">
-              <Label htmlFor="admin-name">Full Name</Label>
+              <Label htmlFor="staff-name">Full Name</Label>
               <Input
-                id="admin-name"
-                value={newAdminName}
-                onChange={(e) => setNewAdminName(e.target.value)}
+                id="staff-name"
+                value={newStaffName}
+                onChange={(e) => setNewStaffName(e.target.value)}
                 placeholder="Patrick Jude Mbano"
                 className="border-gcu-cream-dark"
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="admin-email">Email Address</Label>
+              <Label htmlFor="staff-email">Email Address</Label>
               <Input
-                id="admin-email"
+                id="staff-email"
                 type="email"
-                value={newAdminEmail}
-                onChange={(e) => setNewAdminEmail(e.target.value)}
+                value={newStaffEmail}
+                onChange={(e) => setNewStaffEmail(e.target.value)}
                 placeholder="admin@example.com"
                 className="border-gcu-cream-dark"
               />
             </div>
+
+            {isSuperAdmin ? (
+              <div className="space-y-2">
+                <Label htmlFor="staff-role">Role</Label>
+                <select
+                  id="staff-role"
+                  value={newStaffRole}
+                  onChange={(e) => setNewStaffRole(e.target.value as StaffInviteRole)}
+                  className="h-10 w-full rounded-lg border border-gcu-cream-dark bg-white px-3 text-sm outline-none focus-visible:border-gcu-maroon/30 focus-visible:ring-3 focus-visible:ring-gcu-maroon/20"
+                >
+                  <option value="admin">admin</option>
+                  <option value="super_admin">super admin</option>
+                </select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <div className="flex h-10 items-center rounded-lg border border-gcu-cream-dark bg-gcu-cream/40 px-3 text-sm font-medium text-gcu-maroon-dark">
+                  admin
+                </div>
+              </div>
+            )}
+
             <Button
               type="button"
               className="bg-gcu-maroon hover:bg-gcu-maroon-light"
-              disabled={isCreatingAdmin}
-              onClick={handleCreateAdmin}
+              disabled={isCreatingStaff}
+              onClick={() => void handleCreateStaffAccount()}
             >
-              {isCreatingAdmin ? (
+              {isCreatingStaff ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
                   Creating...
@@ -394,7 +564,7 @@ export default function UsersPage() {
               ) : (
                 <>
                   <Plus className="mr-1.5 size-4" />
-                  Add Admin
+                  Add {isSuperAdmin && newStaffRole === 'super_admin' ? 'Super Admin' : 'Admin'}
                 </>
               )}
             </Button>
@@ -402,7 +572,26 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className={`grid gap-3 ${isSuperAdmin ? 'lg:grid-cols-3' : 'sm:grid-cols-2'}`}>
+        {isSuperAdmin && (
+          <Card className="border-gcu-cream-dark">
+            <CardContent className="flex items-center justify-between p-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-gcu-brown/70">
+                  Super Admins
+                </p>
+                <p className="mt-1 text-2xl font-semibold text-gcu-maroon-dark">
+                  {superAdminProfiles.length}
+                </p>
+              </div>
+              <Badge variant="outline" className="border-gcu-gold/50 text-gcu-maroon-dark">
+                <Shield className="mr-1 size-3.5" />
+                Hidden staff
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="border-gcu-cream-dark">
           <CardContent className="flex items-center justify-between p-4">
             <div>
@@ -416,6 +605,7 @@ export default function UsersPage() {
             <Badge variant="default">Internal access</Badge>
           </CardContent>
         </Card>
+
         <Card className="border-gcu-cream-dark">
           <CardContent className="flex items-center justify-between p-4">
             <div>
@@ -443,7 +633,7 @@ export default function UsersPage() {
             ))}
           </CardContent>
         </Card>
-      ) : filtered.length === 0 ? (
+      ) : totalVisibleProfiles === 0 ? (
         <Card>
           <CardContent className="rounded-lg bg-gcu-cream-dark/30 py-16 text-center">
             <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-gcu-cream-dark">
@@ -453,223 +643,61 @@ export default function UsersPage() {
             <p className="mt-1 text-xs text-gcu-brown">
               {search
                 ? 'Try adjusting your search.'
-                : 'No users have registered yet.'}
+                : 'No users are visible in this account scope yet.'}
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-6">
-          <section className="space-y-3">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gcu-maroon-dark">
-                  Administrators
-                </h2>
-                <p className="text-sm text-gcu-brown">
-                  Internal accounts with access to manage forms, submissions, and users.
-                </p>
-              </div>
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-gcu-brown/70">
-                {adminProfiles.length} account{adminProfiles.length !== 1 ? 's' : ''}
-              </p>
-            </div>
+          {isSuperAdmin && (
+            <ProfileSection
+              title="Super Admins"
+              description="Hidden staff accounts with full visibility across the admin workspace."
+              profiles={superAdminProfiles}
+              emptyState="No super admins match this search."
+              currentUserId={currentUser?.id}
+              roleChangeTargetId={roleChangeTargetId}
+              canPromoteToSuperAdmin={false}
+              onRoleChange={handleRoleChange}
+              onDelete={(profile) => setDeleteTarget(profile)}
+            />
+          )}
 
-            <Card>
-              <CardContent className="p-0">
-                {adminProfiles.length === 0 ? (
-                  <div className="py-12 text-center text-sm text-gcu-brown">
-                    No administrators match this search.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>User</TableHead>
-                          <TableHead className="hidden sm:table-cell">Email</TableHead>
-                          <TableHead>Access</TableHead>
-                          <TableHead className="hidden sm:table-cell">Joined</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {adminProfiles.map((profile) => {
-                          const isSelf = profile.id === currentUser?.id
-                          return (
-                            <TableRow key={profile.id} className="transition-colors hover:bg-gcu-cream/50">
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="size-8">
-                                    <AvatarImage
-                                      src={profile.avatar_url ?? undefined}
-                                      alt={profile.full_name ?? profile.email}
-                                    />
-                                    <AvatarFallback className="text-xs bg-gcu-cream-dark text-gcu-maroon">
-                                      {profile.full_name
-                                        ? getInitials(profile.full_name)
-                                        : getEmailInitials(profile.email)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="min-w-0">
-                                    <p className="truncate font-medium text-gcu-maroon-dark">
-                                      {profile.full_name ?? 'No name set'}
-                                    </p>
-                                    {!profile.full_name && (
-                                      <p className="text-xs text-gcu-brown">
-                                        Name not set on profile
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell text-gcu-brown">
-                                {profile.email}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="default">
-                                  {formatRoleLabel(profile.role)}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell text-gcu-brown">
-                                {formatJoinedDate(profile.created_at)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  {!isSelf && (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
-                                      disabled={roleChangeTargetId === profile.id}
-                                      onClick={() => handleRoleChange(profile, 'user')}
-                                    >
-                                      {roleChangeTargetId === profile.id ? (
-                                        <Loader2 className="size-4 animate-spin" />
-                                      ) : (
-                                        'Demote'
-                                      )}
-                                    </Button>
-                                  )}
-                                  {!isSelf && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-xs"
-                                      onClick={() => setDeleteTarget(profile)}
-                                      title={`Delete ${profile.full_name || profile.email}`}
-                                    >
-                                      <Trash2 className="size-3.5 text-destructive" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </section>
+          <ProfileSection
+            title="Administrators"
+            description="Internal accounts with access to manage forms, submissions, and users."
+            profiles={adminProfiles}
+            emptyState="No administrators match this search."
+            currentUserId={currentUser?.id}
+            roleChangeTargetId={roleChangeTargetId}
+            canPromoteToSuperAdmin={isSuperAdmin}
+            onRoleChange={handleRoleChange}
+            onDelete={(profile) => setDeleteTarget(profile)}
+          />
 
-          <section className="space-y-3">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gcu-maroon-dark">
-                  Non-Admin Signups
-                </h2>
-                <p className="text-sm text-gcu-brown">
-                  Signup/profile details supplied by portal members without admin access.
-                </p>
-              </div>
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-gcu-brown/70">
-                {memberProfiles.length} member{memberProfiles.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-
-            <Card>
-              <CardContent className="p-0">
-                {memberProfiles.length === 0 ? (
-                  <div className="py-12 text-center text-sm text-gcu-brown">
-                    No non-admin signups match this search.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Email</TableHead>
-                          <TableHead className="hidden sm:table-cell">Joined</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {memberProfiles.map((profile) => {
-                          const isSelf = profile.id === currentUser?.id
-                          return (
-                            <TableRow key={profile.id} className="transition-colors hover:bg-gcu-cream/50">
-                              <TableCell className="max-w-[280px]">
-                                <p className="truncate font-medium text-gcu-maroon-dark">
-                                  {profile.email}
-                                </p>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell text-gcu-brown">
-                                {formatJoinedDate(profile.created_at)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  {!isSelf && (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="border-gcu-cream-dark text-gcu-maroon hover:bg-gcu-cream-dark"
-                                      disabled={roleChangeTargetId === profile.id}
-                                      onClick={() => handleRoleChange(profile, 'admin')}
-                                    >
-                                      {roleChangeTargetId === profile.id ? (
-                                        <Loader2 className="size-4 animate-spin" />
-                                      ) : (
-                                        'Make admin'
-                                      )}
-                                    </Button>
-                                  )}
-                                  {!isSelf && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-xs"
-                                      onClick={() => setDeleteTarget(profile)}
-                                      title={`Delete ${profile.full_name || profile.email}`}
-                                    >
-                                      <Trash2 className="size-3.5 text-destructive" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </section>
+          <ProfileSection
+            title="Non-Admin Signups"
+            description="Signup and profile details supplied by portal members without staff access."
+            profiles={memberProfiles}
+            emptyState="No non-admin signups match this search."
+            currentUserId={currentUser?.id}
+            roleChangeTargetId={roleChangeTargetId}
+            canPromoteToSuperAdmin={false}
+            onRoleChange={handleRoleChange}
+            onDelete={(profile) => setDeleteTarget(profile)}
+          />
         </div>
       )}
 
       {!isLoading && (
         <p className="text-xs text-gcu-brown">
+          {isSuperAdmin && `${superAdminProfiles.length} super admin account${superAdminProfiles.length !== 1 ? 's' : ''}, `}
           {adminProfiles.length} admin account{adminProfiles.length !== 1 ? 's' : ''} and{' '}
           {memberProfiles.length} non-admin signup{memberProfiles.length !== 1 ? 's' : ''}
           {search ? ' matching your search' : ' in total'}
         </p>
       )}
 
-      {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

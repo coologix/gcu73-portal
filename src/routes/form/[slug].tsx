@@ -96,6 +96,23 @@ export default function FormPage() {
           return
         }
 
+        const { error: formStartError } = await supabase
+          .from('form_starts')
+          .upsert(
+            {
+              form_id: formData.id,
+              user_id: user.id,
+            } as never,
+            {
+              onConflict: 'form_id,user_id',
+              ignoreDuplicates: true,
+            },
+          )
+
+        if (formStartError) {
+          console.warn('Failed to record form start:', formStartError.message)
+        }
+
         if (!cancelled) {
           setRouteStatus('ready')
         }

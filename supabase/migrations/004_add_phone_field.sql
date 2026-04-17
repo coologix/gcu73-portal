@@ -19,8 +19,8 @@ where form_id = (select id from public.forms where slug = 'gcu73-insurance')
 -- 3. Insert Phone Number field at sort_order 7
 insert into public.form_fields
   (form_id, field_type, label, description, placeholder, is_required, is_sensitive, validation_rules, sort_order)
-values (
-  (select id from public.forms where slug = 'gcu73-insurance'),
+select
+  forms.id,
   'tel',
   'Phone Number',
   'Your phone number including country code (e.g. +234 801 234 5678).',
@@ -29,4 +29,11 @@ values (
   false,
   null,
   7
-);
+from public.forms
+where slug = 'gcu73-insurance'
+  and not exists (
+    select 1
+    from public.form_fields
+    where form_fields.form_id = forms.id
+      and form_fields.label = 'Phone Number'
+  );

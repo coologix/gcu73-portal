@@ -5,16 +5,173 @@
 -- definitions. Run after the initial migration (001_initial.sql).
 -- ============================================================================
 
--- Placeholder UUID for the admin user (Patrick Jude Mbano).
--- In production this must match the auth.users id created during signup.
--- You can update this value once the real auth account exists.
+-- Placeholder UUIDs for local bootstrap staff users.
+-- In production, staff profiles are expected to originate from auth signups.
 do $$
 declare
   v_admin_id uuid := '00000000-0000-0000-0000-000000000001';
+  v_super_admin_id uuid := '00000000-0000-0000-0000-000000000002';
   v_form_id  uuid;
 begin
   -- --------------------------------------------------------------------
-  -- 1. Admin profile
+  -- 1. Bootstrap auth users
+  -- --------------------------------------------------------------------
+  insert into auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    confirmation_token,
+    recovery_token,
+    email_change_token_new,
+    email_change,
+    email_change_token_current,
+    reauthentication_token,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at
+  )
+  values (
+    '00000000-0000-0000-0000-000000000000',
+    v_admin_id,
+    'authenticated',
+    'authenticated',
+    'admin@gcu73.org',
+    crypt('LocalAdminOtpOnly123!', gen_salt('bf')),
+    now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '{"provider": "email", "providers": ["email"]}'::jsonb,
+    jsonb_build_object(
+      'sub', v_admin_id::text,
+      'email', 'admin@gcu73.org',
+      'full_name', 'Patrick Jude Mbano',
+      'email_verified', true,
+      'phone_verified', false
+    ),
+    now(),
+    now()
+  )
+  on conflict (id) do update
+  set email = excluded.email,
+      raw_user_meta_data = excluded.raw_user_meta_data,
+      updated_at = now();
+
+  insert into auth.identities (
+    provider_id,
+    user_id,
+    identity_data,
+    provider,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  )
+  values (
+    v_admin_id::text,
+    v_admin_id,
+    jsonb_build_object(
+      'sub', v_admin_id::text,
+      'email', 'admin@gcu73.org',
+      'full_name', 'Patrick Jude Mbano',
+      'email_verified', true,
+      'phone_verified', false
+    ),
+    'email',
+    now(),
+    now(),
+    now()
+  )
+  on conflict (provider_id, provider) do update
+  set identity_data = excluded.identity_data,
+      updated_at = now();
+
+  insert into auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    confirmation_token,
+    recovery_token,
+    email_change_token_new,
+    email_change,
+    email_change_token_current,
+    reauthentication_token,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at
+  )
+  values (
+    '00000000-0000-0000-0000-000000000000',
+    v_super_admin_id,
+    'authenticated',
+    'authenticated',
+    'superadmin@gcu73.org',
+    crypt('LocalSuperAdminOtpOnly123!', gen_salt('bf')),
+    now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '{"provider": "email", "providers": ["email"]}'::jsonb,
+    jsonb_build_object(
+      'sub', v_super_admin_id::text,
+      'email', 'superadmin@gcu73.org',
+      'full_name', 'Portal Super Admin',
+      'email_verified', true,
+      'phone_verified', false
+    ),
+    now(),
+    now()
+  )
+  on conflict (id) do update
+  set email = excluded.email,
+      raw_user_meta_data = excluded.raw_user_meta_data,
+      updated_at = now();
+
+  insert into auth.identities (
+    provider_id,
+    user_id,
+    identity_data,
+    provider,
+    last_sign_in_at,
+    created_at,
+    updated_at
+  )
+  values (
+    v_super_admin_id::text,
+    v_super_admin_id,
+    jsonb_build_object(
+      'sub', v_super_admin_id::text,
+      'email', 'superadmin@gcu73.org',
+      'full_name', 'Portal Super Admin',
+      'email_verified', true,
+      'phone_verified', false
+    ),
+    'email',
+    now(),
+    now(),
+    now()
+  )
+  on conflict (provider_id, provider) do update
+  set identity_data = excluded.identity_data,
+      updated_at = now();
+
+  -- --------------------------------------------------------------------
+  -- 2. Staff profiles
   -- --------------------------------------------------------------------
   insert into public.profiles (id, email, full_name, role)
   values (
@@ -23,10 +180,25 @@ begin
     'Patrick Jude Mbano',
     'admin'
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update
+  set email = excluded.email,
+      full_name = excluded.full_name,
+      role = excluded.role;
+
+  insert into public.profiles (id, email, full_name, role)
+  values (
+    v_super_admin_id,
+    'superadmin@gcu73.org',
+    'Portal Super Admin',
+    'super_admin'
+  )
+  on conflict (id) do update
+  set email = excluded.email,
+      full_name = excluded.full_name,
+      role = excluded.role;
 
   -- --------------------------------------------------------------------
-  -- 2. Insurance data-collection form
+  -- 3. Insurance data-collection form
   -- --------------------------------------------------------------------
   insert into public.forms (id, title, description, slug, is_active, created_by)
   values (
@@ -40,7 +212,7 @@ begin
   returning id into v_form_id;
 
   -- --------------------------------------------------------------------
-  -- 3. Form fields (ordered 1-7)
+  -- 4. Form fields (ordered 1-8)
   -- --------------------------------------------------------------------
 
   -- 1) Surname

@@ -18,9 +18,6 @@ Deno.serve(async (req) => {
     });
 
   try {
-    const hasAdminAccess = (role?: string | null) =>
-      role === "admin" || role === "super_admin";
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const siteUrl = Deno.env.get("SITE_URL") || "https://gcu73-portal.vercel.app";
@@ -52,7 +49,7 @@ Deno.serve(async (req) => {
       .eq("id", caller.id)
       .single();
 
-    if (!hasAdminAccess(profile?.role)) {
+    if (profile?.role !== "admin" && profile?.role !== "super_admin") {
       return json({ error: "Admin access required" }, 403);
     }
 
@@ -84,7 +81,7 @@ Deno.serve(async (req) => {
 
     // User already exists — send them a magic link email instead
     // This uses the magic_link template (branded "Your Login Code")
-    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+    const { error: linkError } = await adminClient.auth.admin.generateLink({
       type: "magiclink",
       email,
       options: {

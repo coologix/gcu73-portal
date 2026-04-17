@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2, Save, UserRound } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { formatRoleLabel, hasAdminAccess } from '@/lib/roles'
+import { getRoleLabel } from '@/lib/staff'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -101,8 +101,8 @@ export default function ProfilePage() {
               <p className="text-lg font-semibold text-gcu-maroon-dark">
                 {profile.full_name ?? 'Unnamed user'}
               </p>
-              <Badge variant={hasAdminAccess(profile.role) ? 'default' : 'secondary'}>
-                {formatRoleLabel(profile.role)}
+              <Badge variant={profile.role === 'user' ? 'secondary' : 'default'}>
+                {getRoleLabel(profile.role)}
               </Badge>
             </div>
             <p className="text-sm text-gcu-brown">{profile.email}</p>

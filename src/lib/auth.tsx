@@ -13,12 +13,12 @@ import type { User } from '@supabase/supabase-js'
 import type { Profile, ProfileUpdate } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 import { ensureProfileForUser } from '@/lib/profiles'
-import { hasAdminAccess } from '@/lib/roles'
 
 interface AuthContextValue {
   user: User | null
   profile: Profile | null
   isAdmin: boolean
+  isSuperAdmin: boolean
   loading: boolean
   signInWithOtp: (email: string) => Promise<{ error: Error | null }>
   verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>
@@ -163,13 +163,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [user],
   )
 
-  const isAdmin = hasAdminAccess(profile?.role)
+  const isSuperAdmin = profile?.role === 'super_admin'
+  const isAdmin = profile?.role === 'admin' || isSuperAdmin
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       profile,
       isAdmin,
+      isSuperAdmin,
       loading,
       signInWithOtp,
       verifyOtp,
@@ -181,6 +183,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       user,
       profile,
       isAdmin,
+      isSuperAdmin,
       loading,
       signInWithOtp,
       verifyOtp,

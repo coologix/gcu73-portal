@@ -197,7 +197,7 @@ export function FormSummaryDialog({
                     </div>
                   ) : (
                     <div className="space-y-2 rounded-2xl border border-gcu-cream-dark bg-white p-3">
-                      {summary.completedEntries.slice(0, 8).map((entry) => (
+                      {summary.completedEntries.map((entry) => (
                         <div
                           key={`${entry.name}-${entry.completedAt}`}
                           className="flex items-center justify-between gap-3 rounded-xl border border-gcu-cream-dark bg-gcu-cream/20 px-3 py-2"
@@ -213,11 +213,6 @@ export function FormSummaryDialog({
                           </span>
                         </div>
                       ))}
-                      {summary.completedEntries.length > 8 && (
-                        <p className="px-1 pt-1 text-xs text-gcu-brown">
-                          {summary.completedEntries.length - 8} more completed accounts in the copied summary.
-                        </p>
-                      )}
                     </div>
                   )}
 

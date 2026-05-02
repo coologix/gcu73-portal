@@ -181,14 +181,10 @@ function buildShareText(formTitle: string, summary: FormShareSummary): string {
     `Pending: ${summary.pendingCount}`,
   ]
 
-  if (summary.completedEntriesPreview.length > 0) {
+  if (summary.completedEntries.length > 0) {
     lines.push('', 'Completed accounts:')
-    for (const entry of summary.completedEntriesPreview) {
+    for (const entry of summary.completedEntries) {
       lines.push(`- ${entry.name} (${entry.completedDateLabel})`)
-    }
-
-    if (summary.completedEntriesOverflow > 0) {
-      lines.push(`- and ${summary.completedEntriesOverflow} more`)
     }
   }
 
@@ -347,8 +343,8 @@ export async function fetchFormShareSummary(
     new Date(right.completedAt).getTime() - new Date(left.completedAt).getTime()
       || left.name.localeCompare(right.name),
   )
-  const completedEntriesPreview = completedEntries.slice(0, 10)
-  const completedEntriesOverflow = Math.max(completedEntries.length - completedEntriesPreview.length, 0)
+  const completedEntriesPreview = completedEntries
+  const completedEntriesOverflow = 0
   const accountCount = allAccountUserIds.size
   const pendingCount = Math.max(accountCount - completedUserIds.size, 0)
   const generatedAt = new Date().toISOString()

@@ -12,6 +12,16 @@ separate QA deployment flow. Deploy only what the change requires, then verify a
 - Implementation and QA evidence.
 - Repository deployment instructions and existing deploy scripts.
 - Access to required providers: frontend host, backend host, and Supabase when applicable.
+- Base repository env files from `/Users/michaelmadumeexinity/Documents/PAJUNO/gcu73-portal` when
+  deployment commands need local env.
+
+## Environment Handling
+
+- Use the base repo env files for deployment commands when the worktree does not have untracked env
+  files.
+- If a deploy command requires an env file in the worktree, copy the necessary base repo env file as
+  an untracked file and never commit it.
+- Do not print or paste secret values into Linear, screenshots, logs, or summaries.
 
 ## Procedure
 
@@ -49,4 +59,3 @@ separate QA deployment flow. Deploy only what the change requires, then verify a
 - Supabase deployment impact is unclear.
 - The repository has no documented safe deployment path for the required target.
 - Validation fails after deployment. Move to `Blocked` or `Rework` with details.
-

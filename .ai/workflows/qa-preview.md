@@ -12,7 +12,18 @@ when useful, and summarize the result in simple bullets.
 - Repository instructions for local development and environment variables.
 - Existing project commands for running the frontend/backend locally.
 - Deployed Supabase configuration already used by the project.
+- Base repository env files from `/Users/michaelmadumeexinity/Documents/PAJUNO/gcu73-portal`.
 - Portless availability and `local-symphony` proxy status.
+
+## Environment Handling
+
+- Local Symphony worktrees do not include untracked `.env` files. Use the base repo env from
+  `/Users/michaelmadumeexinity/Documents/PAJUNO/gcu73-portal` for QA preview.
+- Check the base repo for `.env`, `.env.local`, and documented env files before blocking on missing
+  Supabase configuration.
+- If the app's dev server only reads env files from the current working directory, copy the needed
+  base repo env file into the worktree as an untracked local file. Never commit it.
+- Keep all secret values out of Linear, screenshots, logs, and summaries.
 
 ## Procedure
 
@@ -25,6 +36,7 @@ when useful, and summarize the result in simple bullets.
    production data mutation, do not deploy it here. Summarize what is required and move or recommend
    `Ready to Deploy`.
 3. If the change is frontend-visible and can safely run against deployed Supabase:
+   - ensure required env is available from the base repo or copied untracked into the worktree
    - verify `portless` is installed
    - ensure `portless proxy start --https` is running
    - use `portless run <existing dev command>` or the repository's documented equivalent
@@ -54,7 +66,6 @@ when useful, and summarize the result in simple bullets.
 ## Stop Conditions
 
 - Portless is unavailable for a browser-facing QA task.
-- Required environment variables are missing.
+- Required environment variables are missing from both the worktree and the base repo env.
 - Deployed Supabase cannot be used safely.
 - The next step would mutate deployed Supabase or deploy application code without explicit approval.
-

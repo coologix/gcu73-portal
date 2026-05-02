@@ -12,7 +12,23 @@ review, and approved changes go straight to `main` during the deploy workflow.
 - Target repository root: `/Users/michaelmadumeexinity/Documents/PAJUNO/gcu73-portal`.
 - Repository instructions: `AGENTS.md`, `CLAUDE.md`, `README.md`, `.ai`, docs, package scripts,
   Supabase docs, deployment docs, and environment notes when present.
+- Base repository env files from `/Users/michaelmadumeexinity/Documents/PAJUNO/gcu73-portal`, because
+  Local Symphony worktrees do not include untracked `.env` files.
 - Any user-provided credentials or deployment approval already recorded in Linear.
+
+## Environment Handling
+
+- Treat `/Users/michaelmadumeexinity/Documents/PAJUNO/gcu73-portal` as the source of local
+  environment files.
+- Before blocking on missing Supabase env, check the base repo for `.env`, `.env.local`, and other
+  documented env files.
+- For local commands that need env, load or reference the base repo env file without printing secret
+  values. Prefer the repository's existing env loading behavior when it exists.
+- If the dev server requires an env file inside the worktree, copy only the required local env file
+  from the base repo to the same relative path in the worktree, keep it untracked, and never commit
+  it.
+- Do not paste Supabase keys, service-role keys, cookies, or admin credentials into Linear, logs, or
+  final summaries.
 
 ## Procedure
 
@@ -26,8 +42,10 @@ review, and approved changes go straight to `main` during the deploy workflow.
 4. Implement the smallest correct change in the assigned worktree.
 5. Use existing repository commands for typecheck, lint, tests, build, and Supabase checks. Do not
    invent new scripts when project scripts already exist.
-6. Commit the work locally on the Symphony branch when validation is complete enough for review.
-7. Move the issue to `Local Review` with the required outputs.
+6. If validation requires Supabase env, use the base repo env according to the Environment Handling
+   section before declaring the task blocked.
+7. Commit the work locally on the Symphony branch when validation is complete enough for review.
+8. Move the issue to `Local Review` with the required outputs.
 
 ## Outputs
 
@@ -46,8 +64,7 @@ review, and approved changes go straight to `main` during the deploy workflow.
 ## Stop Conditions
 
 - Required repository guidance is missing and the next action is unsafe without it.
-- Supabase access is required but unavailable.
+- Supabase access is required and is unavailable in both the worktree and the base repo env.
 - The issue requires production data mutation without explicit permission.
 - The requested action requires deploy approval but the issue is not in `Ready to Deploy`.
 - Portless is required for UI verification but unavailable.
-

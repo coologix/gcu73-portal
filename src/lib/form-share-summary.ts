@@ -158,7 +158,7 @@ function resolveEmailFromSubmissionValues(
   values: SubmissionValue[],
   profile: ProfileRow | null,
 ): string | null {
-  return trimValue(profile?.email) || resolveSubmittedEmail(fields, values) || null
+  return resolveSubmittedEmail(fields, values) || trimValue(profile?.email) || null
 }
 
 function formatPendingEntry(entry: PendingSummaryEntry): string {

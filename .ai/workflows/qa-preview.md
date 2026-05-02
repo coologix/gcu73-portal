@@ -38,8 +38,9 @@ when useful, and summarize the result in simple bullets.
 3. If the change is frontend-visible and can safely run against deployed Supabase:
    - ensure required env is available from the base repo or copied untracked into the worktree
    - verify `portless` is installed
-   - ensure `portless proxy start --https` is running
-   - use `portless run <existing dev command>` or the repository's documented equivalent
+   - verify the Portless proxy is already running
+   - do not start, stop, or restart the Portless proxy from inside the Codex app-server task
+   - use `npm run dev:portless` or the repository's documented equivalent
    - provide the Portless URL in Linear
 4. Exercise the changed path in a browser when feasible.
 5. Capture screenshots for UI changes and reference where they are stored or attached.
@@ -66,6 +67,8 @@ when useful, and summarize the result in simple bullets.
 ## Stop Conditions
 
 - Portless is unavailable for a browser-facing QA task.
+- The Portless proxy is not already running. Ask the operator to run
+  `portless proxy start --https` outside the Codex app-server sandbox.
 - Required environment variables are missing from both the worktree and the base repo env.
 - Deployed Supabase cannot be used safely.
 - The next step would mutate deployed Supabase or deploy application code without explicit approval.
